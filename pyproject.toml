@@ -8,6 +8,7 @@ packages = [{include = "dependent_bterms"}]
 
 [tool.poetry.dependencies]
 python = "^3.9"
+sagemath-standard = "^10.0"
 
 
 [build-system]
