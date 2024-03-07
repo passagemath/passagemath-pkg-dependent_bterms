@@ -57,18 +57,56 @@ def AsymptoticRingWithDependentVariable(
         dependent_variable,
         lower_bound_power,
         upper_bound_power,
-        default_prec=None,
+        **ring_kwargs
     ):
-    """
-    ::
+    """Instantiate a special (univariate) :class:`.AsymptoticRing` that
+    is aware of a monomially bounded symbolic variable.
+
+    INPUT:
+
+    - ``growth_group`` -- the (univariate) growth group of
+      the :class:`.AsymptoticRing`.
+
+    - ``dependent_variable`` -- a string representing a variable
+      in the :class:`.SymbolicRing`, or any valid input for 
+      :meth:`.SymbolicRing.var`.
+
+    - ``lower_bound_power`` -- a nonnegative real number, the power
+      to which the ring's independent variable is raised to in order
+      to obtain the lower monomial power bound.
+
+    - ``upper_bound_power`` -- analogous to ``lower_bound_power``, just
+      for the upper bound.
+
+    - ``ring_kwargs`` -- further keyword arguments being passed to
+      the :class:`.AsymptoticRing` constructor.
+
+
+    SEEALSO:
+
+    - :class:`.AsymptoticRing`
+
+
+    TESTS::
 
         sage: A, n, k = AsymptoticRingWithDependentVariable('n^QQ', 'k', 0, 1/2)
         sage: A.term_monoid_factory.BTermMonoid
         <class '__main__.MonBoundBTermMonoidFactory.<locals>.MonBoundBTermMonoid'>
+        sage: O(k*n)
+        O(n^(3/2))
     """
-    AR = AsymptoticRingWithCustomPosetKey(growth_group, SR, default_prec=default_prec)
+    AR = AsymptoticRingWithCustomPosetKey(
+        growth_group=growth_group,
+        coefficient_ring=SR,
+        **ring_kwargs
+    )
     k = SR.var(dependent_variable)
     n = AR.gen()
-    AR_with_bound = _add_monomial_growth_restriction_to_ring(AR, k, lower_bound=n**lower_bound_power, upper_bound=n**upper_bound_power)
+    AR_with_bound = _add_monomial_growth_restriction_to_ring(
+        AR,
+        k,
+        lower_bound=n**lower_bound_power,
+        upper_bound=n**upper_bound_power
+    )
     n = AR_with_bound.gen()
     return AR_with_bound, n, k
