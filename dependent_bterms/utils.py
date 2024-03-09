@@ -13,17 +13,22 @@
 
 """
 
+from sage.arith.srange import srange
 from sage.ext.fast_callable import fast_callable
+from sage.functions.other import ceil
 from sage.symbolic.expression import Expression
 from sage.rings.asymptotic.asymptotic_ring import AsymptoticExpansion
 from sage.rings.asymptotic.term_monoid import BTerm, ExactTerm
-from sage.rings.integer_ring import ZZ
+
+from sage.all import oo, SR, RIF, ZZ
 
 __all__ = [
     'evaluate',
     'simplify_expansion',
+    'round_bterm_coefficients',
     'set_bterm_valid_from',
     'expansion_upper_bound',
+    'taylor_with_explicit_error',
 ]
 
 def evaluate(expression: Expression, **eval_args):
@@ -80,8 +85,33 @@ def simplify_expansion(expr: AsymptoticExpansion):
     return new_expr
 
 
+def round_bterm_coefficients(term: AsymptoticExpansion):
+    """Rounds the coefficients of all BTerms in the given expansion to the
+    next integer.
+    
+    ::
+
+        sage: import dependent_bterms as dbt
+        sage: A.<n> = AsymptoticRing('n^QQ', QQ)
+        sage: some_expansion = n - A.B(27/23/n^2, valid_from=10)
+        sage: some_expansion
+        n + B(27/23*n^(-2), n >= 10)
+        sage: dbt.round_bterm_coefficients(some_expansion)
+        n + B(2*n^(-2), n >= 10)
+    """
+    def bterm_map(t):
+        if isinstance(t, BTerm):
+            t.coefficient = ceil(t.coefficient)
+        return t
+
+    P = term.parent()
+    S = term.summands.copy()
+    S.map(bterm_map)
+    return P(S, simplify=None, convert=False)
+
+
 def set_bterm_valid_from(asy: AsymptoticExpansion, valid_from: dict[str, int] | int):
-    """Changes the point from which a BTerm bound is valid
+    """Changes the point from which a B-Term bound is valid
     such that the term remains valid.
 
     That is, the bounds can only be increased.
@@ -147,7 +177,7 @@ def expansion_upper_bound(
         "symbolic" bound with the smallest integers such that
         all involved B-Terms are valid.
     valid_from
-        
+        A new ``valid_from`` value to be used for all B-Terms.
         
 
     EXAMPLES::
@@ -194,3 +224,60 @@ def expansion_upper_bound(
         return bound.subs(valid_from)
     
     return bound
+
+def taylor_with_explicit_error(f, term: AsymptoticExpansion, order=None, valid_from=None, round_constant=True):
+    r"""Determines the series expansion with explicit error bounds
+    of a given function `f` at a specified asymptotic term.
+
+    The term is assumed to be in o(1).
+
+    TESTS::
+
+        sage: import dependent_bterms as dbt
+        sage: A, n, k = dbt.AsymptoticRingWithDependentVariable('n^QQ', 'k', 0, 1/2)
+
+        sage: some_expansion = 2/n + 3/n^2 + A.B(4/n^3, valid_from=10)
+        sage: expansion = dbt.taylor_with_explicit_error(lambda t: 1/(1 - t), some_expansion, order=3)
+        sage: expansion
+        1 + 2*n^(-1) + 7*n^(-2) + B(7149339/125000*n^(-3), n >= 10)
+        sage: dbt.round_bterm_coefficients(expansion)
+        1 + 2*n^(-1) + 7*n^(-2) + B(58*n^(-3), n >= 10)
+
+        sage: dbt.taylor_with_explicit_error(lambda t: 1/(1 - t), k/n, order=3)
+        asdf
+
+    """
+    if not term.is_little_o_of_one():
+        raise ValueError("The asymptotic term needs to tend to 0.")
+
+    AR = term.parent()
+
+    if order is None:
+        order = AR.default_prec
+
+    zero = AR.zero()
+    taylor_expansion = zero
+    term_power = AR.one()
+    sym = SR.var("z")
+    f_sym = f(sym)
+
+    for j in srange(order):
+        taylor_expansion += evaluate(f_sym, z=zero) * term_power
+
+        f_sym = f_sym.diff(sym, 1) / (j+1)
+        term_power *= term
+
+    if valid_from is not None:
+        set_bterm_valid_from(term, valid_from=valid_from)
+    term_bound = expansion_upper_bound(term, valid_from=valid_from, numeric=True)
+    bound_const = abs(evaluate(f_sym, z=RIF([0, term_bound]))).upper()
+
+    if not bound_const < oo:
+        raise ValueError(f"Could not find a finite bound for the derivative {f_sym} on the interval [0, {term_bound}].")
+
+    if round_constant:
+        bound_const = ceil(bound_const)
+
+    taylor_bound = bound_const * term_power
+
+    return taylor_expansion + taylor_bound

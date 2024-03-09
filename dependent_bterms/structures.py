@@ -54,7 +54,7 @@ def _element_key(element):
         if isinstance(element, TermWithCoefficient):
             coef = element.coefficient
 
-            if bound_var in coef.variables():
+            if isinstance(coef, Expression) and bound_var in coef.variables():
                 with assuming(bound_var > 0):
                     coef_simplified = coef.simplify()
 
@@ -148,20 +148,19 @@ class MonBoundOTerm(OTerm):
             growth *= coefficient_bound.growth
             
         super().__init__(parent, growth)
+
+    def dependent_growth_range(self):
+        return (self.growth, self.growth)
     
     def can_absorb(self, other):
-        dependent_variable, lower, upper = self.parent().variable_bounds
-        if isinstance(other, TermWithCoefficient) and dependent_variable in other.coefficient.variables():
-            boundary_terms = []
-            for value in (lower, upper):
-                eval_arg = {
-                    str(dependent_variable): value
-                }
-                term = evaluate(other.coefficient, **eval_arg).O()
-                [term] = list(term.summands)
-                boundary_terms.append(term * other)
-            return all(self.can_absorb(term) for term in boundary_terms)
+        if isinstance(other, TermWithCoefficient):
+            other_lower, other_upper = other.dependent_growth_range()
+            return all(
+                self.growth >= growth_bound 
+                for growth_bound in other.dependent_growth_range()
+            )
         return self.growth >= other.growth
+
 
 def MonBoundOTermMonoidFactory(dependent_variable, lower_bound, upper_bound):
     _verify_variable_and_bounds(dependent_variable, lower_bound, upper_bound)
@@ -229,10 +228,32 @@ class MonBoundBTerm(BTerm):
         sage: A.create_summand(MBTM, coefficient=42*k, growth=ng^-2, valid_from=5)
         B(42*abs(k)*n^(-2), n >= 5)
     """
+
+    def dependent_growth_range(self):
+        dependent_variable, lower, upper = self.parent().variable_bounds
+        if dependent_variable not in self.coefficient.variables():
+            return (self.growth, self.growth)
+        
+        boundary_growths = []
+        for value in (lower, upper):
+            eval_arg = {
+                str(dependent_variable): value
+            }
+            term = evaluate(self.coefficient, **eval_arg).O()
+            [term] = list(term.summands)
+            boundary_growths.append(term.growth * self.growth)
+        
+        return (min(boundary_growths), max(boundary_growths))
     
     def can_absorb(self, other):
         # TODO: proper absorption, cf. MonBoundOTerm.can_absorb
-        return self.growth == other.growth
+        self_growth_lower, self_growth_upper = self.dependent_growth_range()
+        other_growth_lower, other_growth_upper = other.dependent_growth_range()
+        return (
+            (self.growth >= other.growth) and
+            (self_growth_lower >= other_growth_lower) and
+            (self_growth_upper >= other_growth_upper)
+        )
     
     def _absorb_(self, other):
         return super()._absorb_(other)
@@ -285,7 +306,22 @@ def MonBoundBTermMonoidFactory(dependent_variable, lower_bound, upper_bound):
     return MonBoundBTermMonoid
 
 class MonBoundExactTerm(ExactTerm):
-    pass
+
+    def dependent_growth_range(self):
+        dependent_variable, lower, upper = self.parent().variable_bounds
+        if dependent_variable not in self.coefficient.variables():
+            return (self.growth, self.growth)
+        
+        boundary_growths = []
+        for value in (lower, upper):
+            eval_arg = {
+                str(dependent_variable): value
+            }
+            term = evaluate(self.coefficient, **eval_arg).O()
+            [term] = list(term.summands)
+            boundary_growths.append(term.growth * self.growth)
+        
+        return (min(boundary_growths), max(boundary_growths))
 
 def MonBoundExactTermMonoidFactory(
         dependent_variable,
