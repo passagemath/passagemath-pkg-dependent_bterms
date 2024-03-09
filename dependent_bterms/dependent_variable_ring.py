@@ -1,3 +1,18 @@
+"""
+
+::
+
+    sage: import dependent_bterms as dbt
+    sage: AR, n, k = dbt.AsymptoticRingWithDependentVariable('n^QQ', 'k', 0, 1/2)
+    sage: AR.B(k*n)
+    doctest:warning
+    ...
+    FutureWarning: ...
+    ...
+    B(abs(k)*n, n >= 0)
+
+"""
+
 from sage.symbolic.ring import SR
 
 from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing, AsymptoticExpansion
@@ -24,7 +39,8 @@ def _add_monomial_growth_restriction_to_ring(
 
     ::
 
-        sage: A, n, k = AsymptoticRingWithDependentVariable('n^QQ', 'k', 0, 1/2)
+        sage: import dependent_bterms as dbt
+        sage: A, n, k = dbt.AsymptoticRingWithDependentVariable('n^QQ', 'k', 0, 1/2)
         sage: A.B(k*n)
         B(abs(k)*n, n >= 0)
         sage: (k*n).O()
@@ -89,9 +105,10 @@ def AsymptoticRingWithDependentVariable(
 
     TESTS::
 
-        sage: A, n, k = AsymptoticRingWithDependentVariable('n^QQ', 'k', 0, 1/2)
+        sage: import dependent_bterms as dbt
+        sage: A, n, k = dbt.AsymptoticRingWithDependentVariable('n^QQ', 'k', 0, 1/2)
         sage: A.term_monoid_factory.BTermMonoid
-        <class '__main__.MonBoundBTermMonoidFactory.<locals>.MonBoundBTermMonoid'>
+        <class 'dependent_bterms.structures.MonBoundBTermMonoidFactory.<locals>.MonBoundBTermMonoid'>
         sage: O(k*n)
         O(n^(3/2))
     """

@@ -1,3 +1,18 @@
+"""
+
+::
+
+    sage: import dependent_bterms as dbt
+    sage: AR, n, k = dbt.AsymptoticRingWithDependentVariable('n^QQ', 'k', 0, 1/2)
+    sage: AR.B(k*n)
+    doctest:warning
+    ...
+    FutureWarning: ...
+    ...
+    B(abs(k)*n, n >= 0)
+
+"""
+
 from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing
 from sage.rings.asymptotic.term_monoid import (
     BTermMonoid,
@@ -87,7 +102,8 @@ class MonBoundOTerm(OTerm):
 
     ::
 
-        sage: A, n, k = AsymptoticRingWithDependentVariable('n^QQ', 'k', -1/2, 1/2, default_prec=4)
+        sage: import dependent_bterms as dbt
+        sage: A, n, k = dbt.AsymptoticRingWithDependentVariable('n^QQ', 'k', -1/2, 1/2, default_prec=4)
         sage: O(pi*n)
         O(n)
         sage: O(n*k)
@@ -201,7 +217,7 @@ class MonBoundBTerm(BTerm):
     """BTerm that is coefficient growth aware.
     
     ::
-
+        sage: from dependent_bterms.structures import MonBoundBTermMonoidFactory
         sage: A.<n> = AsymptoticRing('n^QQ', SR)
         sage: from sage.rings.asymptotic.term_monoid import DefaultTermMonoidFactory as TMF
         sage: k = SR.var('k')
