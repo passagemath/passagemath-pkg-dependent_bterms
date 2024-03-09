@@ -235,11 +235,13 @@ class MonBoundBTerm(BTerm):
             return (self.growth, self.growth)
         
         boundary_growths = []
+        with assuming(dependent_variable > 0):
+            coef_simplified = self.coefficient.simplify()
         for value in (lower, upper):
             eval_arg = {
                 str(dependent_variable): value
             }
-            term = evaluate(self.coefficient, **eval_arg).O()
+            term = evaluate(coef_simplified, **eval_arg).O()
             [term] = list(term.summands)
             boundary_growths.append(term.growth * self.growth)
         
@@ -313,11 +315,13 @@ class MonBoundExactTerm(ExactTerm):
             return (self.growth, self.growth)
         
         boundary_growths = []
+        with assuming(dependent_variable > 0):
+            coef_simplified = self.coefficient.simplify()
         for value in (lower, upper):
             eval_arg = {
                 str(dependent_variable): value
             }
-            term = evaluate(self.coefficient, **eval_arg).O()
+            term = evaluate(coef_simplified, **eval_arg).O()
             [term] = list(term.summands)
             boundary_growths.append(term.growth * self.growth)
         

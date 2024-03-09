@@ -22,6 +22,8 @@ from sage.rings.asymptotic.term_monoid import BTerm, ExactTerm
 
 from sage.all import oo, SR, RIF, ZZ
 
+import dependent_bterms as dbt
+
 __all__ = [
     'evaluate',
     'simplify_expansion',
@@ -85,7 +87,7 @@ def simplify_expansion(expr: AsymptoticExpansion):
     return new_expr
 
 
-def round_bterm_coefficients(term: AsymptoticExpansion):
+def round_bterm_coefficients(expansion: AsymptoticExpansion, floating_point_digits=0):
     """Rounds the coefficients of all BTerms in the given expansion to the
     next integer.
     
@@ -98,16 +100,23 @@ def round_bterm_coefficients(term: AsymptoticExpansion):
         n + B(27/23*n^(-2), n >= 10)
         sage: dbt.round_bterm_coefficients(some_expansion)
         n + B(2*n^(-2), n >= 10)
+        sage: dbt.round_bterm_coefficients(some_expansion, floating_point_digits=3)
+        n + B(587/500*n^(-2), n >= 10)
     """
     def bterm_map(t):
         if isinstance(t, BTerm):
-            t.coefficient = ceil(t.coefficient)
+            t.coefficient = ceil(t.coefficient * 10**floating_point_digits) / 10**floating_point_digits
         return t
-
-    P = term.parent()
-    S = term.summands.copy()
-    S.map(bterm_map)
-    return P(S, simplify=None, convert=False)
+    
+    # note: expansion.summands.copy() returns a shallow copy
+    import copy
+    P = expansion.parent()
+    expansion_copy = sum(
+        (P(copy.deepcopy(summand)) for summand in expansion.summands),
+        P.zero()
+    )
+    expansion_copy.summands.map(bterm_map)
+    return expansion_copy
 
 
 def set_bterm_valid_from(asy: AsymptoticExpansion, valid_from: dict[str, int] | int):
@@ -182,9 +191,10 @@ def expansion_upper_bound(
 
     EXAMPLES::
 
-        sage: A.<n> = AsymptoticRing('n^QQ', QQ)
-
+        sage: import dependent_bterms as dbt
         sage: from dependent_bterms import expansion_upper_bound
+        sage: A, n, k = dbt.AsymptoticRingWithDependentVariable('n^QQ', 'k', 0, 1/2)
+
         sage: expansion_upper_bound(n^2 + n + 1)
         n^2 + n + 1
 
@@ -194,13 +204,19 @@ def expansion_upper_bound(
         sage: expansion_upper_bound(n - A.B(1/n^2, valid_from=1))
         n + n^(-2)
 
-        sage: expansion_upper_bound(n - A.B(1/n^2, valid_from=10), numeric=True)
-        1001/100
+        sage: expansion_upper_bound(1/n - A.B(1/n^2, valid_from=10), numeric=True)
+        11/100
 
         sage: expansion_upper_bound(1 + O(1/n))
         Traceback (most recent call last):
         ...
         ValueError: No same-order bound can be constructed for O(n^(-1))
+
+        sage: expansion_upper_bound(k*n)
+        k*n
+        
+        sage: expansion_upper_bound(A.B(k/n, valid_from=10), numeric=True)
+        1/10*sqrt(10)
 
     """
     A = asy.parent()
@@ -208,6 +224,7 @@ def expansion_upper_bound(
     valid_from = {v: valid_from or A.coefficient_ring.one() for v in asy.variable_names()}
     for summand in asy.summands:
         if isinstance(summand, ExactTerm):
+            # TODO: abs(coefficient) here too?
             bound += A(summand)
         elif isinstance(summand, BTerm):
             bound += A.create_summand(
@@ -221,6 +238,21 @@ def expansion_upper_bound(
             raise ValueError(f"No same-order bound can be constructed for {summand}")
     
     if numeric:
+        # check that expansion is bounded, in O(1)
+        OT_one = A.term_monoid('O')(A.growth_group.one())
+        if not all(OT_one.can_absorb(summand) for summand in bound.summands):
+            raise ValueError(
+                "Cannot determine numeric bound, the expansion "
+                f"{bound} does not seem to be bounded."
+            )
+        
+        if isinstance(A, dbt.structures.AsymptoticRingWithCustomPosetKey):
+            ETM = A.term_monoid('exact')
+            dependent_variable, _, upper = ETM.variable_bounds
+            bound = bound.map_coefficients(lambda t: t.subs({
+                dependent_variable: upper.subs(valid_from)
+            }))
+
         return bound.subs(valid_from)
     
     return bound
@@ -243,7 +275,10 @@ def taylor_with_explicit_error(f, term: AsymptoticExpansion, order=None, valid_f
         sage: dbt.round_bterm_coefficients(expansion)
         1 + 2*n^(-1) + 7*n^(-2) + B(58*n^(-3), n >= 10)
 
-        sage: dbt.taylor_with_explicit_error(lambda t: 1/(1 - t), k/n, order=3)
+        sage: dbt.taylor_with_explicit_error(lambda t: 1/(1 - t), k/n, order=3, valid_from=10)
+        1 + k*n^(-1) + k^2*n^(-2) + B(5*abs(k^3)*n^(-3), n >= 10)
+
+        sage: dbt.taylor_with_explicit_error(lambda t: exp(t), (1 + k)/n, order=3, valid_from=10)
         asdf
 
     """
@@ -279,5 +314,15 @@ def taylor_with_explicit_error(f, term: AsymptoticExpansion, order=None, valid_f
         bound_const = ceil(bound_const)
 
     taylor_bound = bound_const * term_power
+    if valid_from is None:
+        valid_from = {str(v): ZZ.one() for v in AR.gens()}
+        for summand in taylor_bound.error_part().summands:
+            if isinstance(summand, BTerm):
+                valid_from = {
+                    v: max(bd, summand.valid_from.get(v, ZZ.one()))
+                    for v, bd in valid_from.items()
+                }
+
+    taylor_bound = AR.B(taylor_bound, valid_from=valid_from)
 
     return taylor_expansion + taylor_bound
