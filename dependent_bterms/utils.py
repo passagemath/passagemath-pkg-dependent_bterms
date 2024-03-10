@@ -282,7 +282,6 @@ def expansion_upper_bound(
     valid_from = {v: valid_from or A.coefficient_ring.one() for v in asy.variable_names()}
     for summand in asy.summands:
         if isinstance(summand, ExactTerm):
-            # TODO: abs(coefficient) here too?
             bound += A(summand)
         elif isinstance(summand, BTerm):
             bound += A.create_summand(
