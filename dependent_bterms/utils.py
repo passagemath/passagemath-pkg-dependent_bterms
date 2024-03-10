@@ -16,9 +16,11 @@
 from sage.arith.srange import srange
 from sage.ext.fast_callable import fast_callable
 from sage.functions.other import ceil
+from sage.symbolic.assumptions import assuming
 from sage.symbolic.expression import Expression
-from sage.rings.asymptotic.asymptotic_ring import AsymptoticExpansion
-from sage.rings.asymptotic.term_monoid import BTerm, ExactTerm
+from sage.symbolic.operators import add_vararg
+from sage.rings.asymptotic.asymptotic_ring import AsymptoticExpansion, AsymptoticRing
+from sage.rings.asymptotic.term_monoid import BTerm, ExactTerm, OTerm, TermWithCoefficient
 
 from sage.all import oo, SR, RIF, ZZ
 
@@ -61,29 +63,72 @@ def evaluate(expression: Expression, **eval_args):
     return fast_callable(expression, vars=expression_vars)(*function_args)
 
 
-def simplify_expansion(expr: AsymptoticExpansion):
+def _distribute_coefficient(
+        summand: TermWithCoefficient,
+        ring: AsymptoticRing,
+        simplify_bterm_growth: bool = False,
+    ):
+    term_type = 'exact' if isinstance(summand, ExactTerm) else 'B'
+    extra_args = {} if term_type == 'exact' else {'valid_from': summand.valid_from}
+    result = ring.zero()
+    k, _, upper = summand.parent().variable_bounds
+    with assuming(k > 0):
+        coef_expanded = summand.coefficient.simplify().expand()
+    if term_type == 'B' and simplify_bterm_growth:
+        rest = ring.create_summand(
+            term_type,
+            coefficient=ring.coefficient_ring.one(),
+            growth=summand.growth,
+            valid_from=summand.valid_from,
+        )
+        return evaluate(coef_expanded, **{str(k): upper}) * rest
+    if coef_expanded.operator() is add_vararg:
+        for part_coef in coef_expanded.operands():
+            result += ring.create_summand(
+                term_type,
+                coefficient=part_coef,
+                growth=summand.growth,
+                **extra_args
+            )
+    else:
+        result = ring(summand)
+    
+    return result
+
+
+def simplify_expansion(
+        expr: AsymptoticExpansion,
+        simplify_bterm_growth: bool = False,
+        round_digits: int | None = None,
+    ):
     """Simplify an asymptotic expansion by allowing error terms
     to try and absorb parts of exact terms."""
-    from sage.symbolic.operators import add_vararg
-    
     A = expr.parent()
     new_expr = A.zero()
     for summand in expr.summands:
-        if not summand.is_exact():
+        if isinstance(summand, OTerm):
             new_expr += A(summand)
+        elif isinstance(summand, BTerm):
+            k, _, _ = summand.parent().variable_bounds
+            if k in summand.coefficient.variables():
+                new_expr += _distribute_coefficient(
+                    summand,
+                    A,
+                    simplify_bterm_growth=simplify_bterm_growth
+                )
+            else:
+                new_expr += A(summand)
     
     for summand in expr.summands:
         if summand.is_exact():
             k, _, _ = summand.parent().variable_bounds
             if k in summand.coefficient.variables():
-                coef_expanded = summand.coefficient.expand()
-                if coef_expanded.operator() is add_vararg:
-                    for part_coef in coef_expanded.operands():
-                        new_expr += A.create_summand('exact', coefficient=part_coef, growth=summand.growth)
-                else:
-                    new_expr += A(summand)
+                new_expr += _distribute_coefficient(summand, A)
             else:
                 new_expr += A(summand)
+    
+    if round_digits is not None:
+        new_expr = round_bterm_coefficients(new_expr, floating_point_digits=round_digits)
     return new_expr
 
 
@@ -257,7 +302,13 @@ def expansion_upper_bound(
     
     return bound
 
-def taylor_with_explicit_error(f, term: AsymptoticExpansion, order=None, valid_from=None, round_constant=True):
+def taylor_with_explicit_error(
+        f,
+        term: AsymptoticExpansion,
+        order=None,
+        valid_from=None,
+        round_constant=True,
+    ):
     r"""Determines the series expansion with explicit error bounds
     of a given function `f` at a specified asymptotic term.
 
@@ -278,8 +329,11 @@ def taylor_with_explicit_error(f, term: AsymptoticExpansion, order=None, valid_f
         sage: dbt.taylor_with_explicit_error(lambda t: 1/(1 - t), k/n, order=3, valid_from=10)
         1 + k*n^(-1) + k^2*n^(-2) + B(5*abs(k^3)*n^(-3), n >= 10)
 
-        sage: dbt.taylor_with_explicit_error(lambda t: exp(t), (1 + k)/n, order=3, valid_from=10)
-        asdf
+        sage: asy = dbt.taylor_with_explicit_error(lambda t: exp(t), (1 + k)/n, order=3, valid_from=10)
+        sage: asy
+        1 + (k + 1)*n^(-1) + (1/2*(k + 1)^2)*n^(-2) + B((abs(k^3 + 3*k^2 + 3*k + 1))*n^(-3), n >= 10)
+        sage: dbt.simplify_expansion(asy)
+        1 + (k + 1)*n^(-1) + (1/2*k^2 + k + 1/2)*n^(-2) + B(abs(k)^3*n^(-3), n >= 10) + B(3*abs(k^2)*n^(-3), n >= 10) + B(3*abs(k)*n^(-3), n >= 10) + B(n^(-3), n >= 10)
 
     """
     if not term.is_little_o_of_one():

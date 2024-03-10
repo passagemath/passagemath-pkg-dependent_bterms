@@ -23,8 +23,9 @@ from sage.rings.asymptotic.term_monoid import (
     TermWithCoefficient,
     ExactTerm
 )
-from sage.symbolic.expression import Expression
 from sage.symbolic.assumptions import assuming
+from sage.symbolic.expression import Expression
+from sage.symbolic.operators import add_vararg
 
 from .utils import evaluate
 
@@ -58,9 +59,15 @@ def _element_key(element):
                 with assuming(bound_var > 0):
                     coef_simplified = coef.simplify()
 
+                bounds = []
+                for bound in [lower, upper]:
+                    asy_bound = evaluate(coef_simplified, **{str(bound_var): bound})
+                    if asy_bound.is_zero():
+                        asy_bound = bound.parent().one()
+                    bounds.append(asy_bound.O())
+                
                 coef_bound = max(
-                    [evaluate(coef_simplified, **{str(bound_var): bound}).O()
-                    for bound in [lower, upper]],
+                    bounds,
                     key=lambda expr: list(expr.summands)[0].growth
                 )
                 [coef_bound_term] = list(coef_bound.summands)
@@ -227,7 +234,25 @@ class MonBoundBTerm(BTerm):
         sage: (ng,) = A.growth_group.gens_monomial()
         sage: A.create_summand(MBTM, coefficient=42*k, growth=ng^-2, valid_from=5)
         B(42*abs(k)*n^(-2), n >= 5)
+
+        sage: A.create_summand(MBTM, coefficient=k-1, growth=ng^(-1), valid_from=10)
+        B((abs(k + 1))*n^(-1), n >= 10)
     """
+    def __init__(self, parent, growth, valid_from, **kwds):
+        coef = kwds['coefficient']
+        if (
+            isinstance(coef, Expression) 
+            and parent.dependent_variable in coef.variables()
+        ):
+            with assuming(parent.dependent_variable > 0):
+                coef_expanded = coef.simplify().expand()
+                if coef_expanded.operator() is add_vararg:
+                    coef_expanded = sum(
+                        (abs(op).simplify() for op in coef_expanded.operands()),
+                        coef_expanded.parent().zero()
+                    )
+            kwds['coefficient'] = coef_expanded
+        super().__init__(parent, growth, valid_from, **kwds)
 
     def dependent_growth_range(self):
         dependent_variable, lower, upper = self.parent().variable_bounds
@@ -248,13 +273,12 @@ class MonBoundBTerm(BTerm):
         return (min(boundary_growths), max(boundary_growths))
     
     def can_absorb(self, other):
-        # TODO: proper absorption, cf. MonBoundOTerm.can_absorb
         self_growth_lower, self_growth_upper = self.dependent_growth_range()
         other_growth_lower, other_growth_upper = other.dependent_growth_range()
         return (
             (self.growth >= other.growth) and
-            (self_growth_lower >= other_growth_lower) and
-            (self_growth_upper >= other_growth_upper)
+            (self_growth_lower / self.growth == other_growth_lower / other.growth) and
+            (self_growth_upper / self.growth == other_growth_upper / other.growth)
         )
     
     def _absorb_(self, other):
