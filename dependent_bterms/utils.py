@@ -346,7 +346,9 @@ def taylor_with_explicit_error(
         sage: asy
         1 + (k + 1)*n^(-1) + (1/2*(k + 1)^2)*n^(-2) + B((abs(k^3 + 3*k^2 + 3*k + 1))*n^(-3), n >= 10)
         sage: dbt.simplify_expansion(asy)
-        1 + (k + 1)*n^(-1) + (1/2*k^2 + k + 1/2)*n^(-2) + B((abs(k^3 + 3*k^2 + 3*k + 1))*n^(-3), n >= 10)
+        1 + (k + 1)*n^(-1) + (1/2*k^2 + k)*n^(-2) + B((abs(k^3 + 3*k^2 + 3*k + 1))*n^(-3), n >= 10) + 1/2*n^(-2)
+        sage: dbt.simplify_expansion(asy, simplify_bterm_growth=True)
+        1 + (k + 1)*n^(-1) + 1/2*k^2*n^(-2) + B((9/25*sqrt(10) + 23/10)*n^(-3/2), n >= 10)
 
         sage: dbt.taylor_with_explicit_error(exp, k/(10*n), order=3, valid_from=1000)
         1 + 1/10*k*n^(-1) + 1/200*k^2*n^(-2) + B(1/1000*abs(k^3)*n^(-3), n >= 1000)
