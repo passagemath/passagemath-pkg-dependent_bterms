@@ -99,7 +99,6 @@ def _distribute_coefficient(
 def simplify_expansion(
         expr: AsymptoticExpansion,
         simplify_bterm_growth: bool = False,
-        round_digits: int | None = None,
     ):
     """Simplify an asymptotic expansion by allowing error terms
     to try and absorb parts of exact terms."""
@@ -126,9 +125,7 @@ def simplify_expansion(
                 new_expr += _distribute_coefficient(summand, A)
             else:
                 new_expr += A(summand)
-    
-    if round_digits is not None:
-        new_expr = round_bterm_coefficients(new_expr, floating_point_digits=round_digits)
+
     return new_expr
 
 
@@ -150,14 +147,24 @@ def round_bterm_coefficients(expansion: AsymptoticExpansion, floating_point_digi
     """
     def bterm_map(t):
         if isinstance(t, BTerm):
-            t.coefficient = ceil(t.coefficient * 10**floating_point_digits) / 10**floating_point_digits
+            if isinstance(t.coefficient, Expression) and hasattr(t.parent(), 'dependent_variable'):
+                k = t.parent().dependent_variable
+                with assuming(k > 0):
+                    coef_expanded = t.coefficient.simplify().expand()
+                    coef_bound = sum(
+                        ceil(c * 10**floating_point_digits) / 10**floating_point_digits * k**p
+                        for (c, p) in coef_expanded.coefficients(k)
+                    )
+                t.coefficient = coef_bound
+            else:
+                t.coefficient = ceil(t.coefficient * 10**floating_point_digits) / 10**floating_point_digits
         return t
     
     # note: expansion.summands.copy() returns a shallow copy
     import copy
     P = expansion.parent()
     expansion_copy = sum(
-        (P(copy.deepcopy(summand)) for summand in expansion.summands),
+        (P(copy.deepcopy(summand), convert=False) for summand in expansion.summands),
         P.zero()
     )
     expansion_copy.summands.map(bterm_map)
@@ -333,13 +340,22 @@ def taylor_with_explicit_error(
         sage: asy
         1 + (k + 1)*n^(-1) + (1/2*(k + 1)^2)*n^(-2) + B((abs(k^3 + 3*k^2 + 3*k + 1))*n^(-3), n >= 10)
         sage: dbt.simplify_expansion(asy)
-        1 + (k + 1)*n^(-1) + (1/2*k^2 + k + 1/2)*n^(-2) + B(abs(k)^3*n^(-3), n >= 10) + B(3*abs(k^2)*n^(-3), n >= 10) + B(3*abs(k)*n^(-3), n >= 10) + B(n^(-3), n >= 10)
+        1 + (k + 1)*n^(-1) + (1/2*k^2 + k + 1/2)*n^(-2) + B((abs(k^3 + 3*k^2 + 3*k + 1))*n^(-3), n >= 10)
+
+        sage: dbt.taylor_with_explicit_error(exp, k/(10*n), order=3, valid_from=1000)
+        1 + 1/10*k*n^(-1) + 1/200*k^2*n^(-2) + B(1/1000*abs(k^3)*n^(-3), n >= 1000)
+        sage: A, n, k = dbt.AsymptoticRingWithDependentVariable('n^QQ', 'k', 0, 1/2, bterm_round_to=1)
+        sage: dbt.taylor_with_explicit_error(exp, k/(10*n), order=3, valid_from=1000)
+        1 + 1/10*k*n^(-1) + 1/200*k^2*n^(-2) + B(1/10*abs(k^3)*n^(-3), n >= 1000)
 
     """
     if not term.is_little_o_of_one():
         raise ValueError("The asymptotic term needs to tend to 0.")
 
     AR = term.parent()
+
+    if valid_from is not None:
+        set_bterm_valid_from(term, valid_from=valid_from)
 
     if order is None:
         order = AR.default_prec
@@ -356,8 +372,6 @@ def taylor_with_explicit_error(
         f_sym = f_sym.diff(sym, 1) / (j+1)
         term_power *= term
 
-    if valid_from is not None:
-        set_bterm_valid_from(term, valid_from=valid_from)
     term_bound = expansion_upper_bound(term, valid_from=valid_from, numeric=True)
     bound_const = abs(evaluate(f_sym, z=RIF([0, term_bound]))).upper()
 
@@ -378,5 +392,4 @@ def taylor_with_explicit_error(
                 }
 
     taylor_bound = AR.B(taylor_bound, valid_from=valid_from)
-
     return taylor_expansion + taylor_bound

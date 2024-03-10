@@ -32,6 +32,7 @@ def _add_monomial_growth_restriction_to_ring(
         dependent_variable: Expression,
         lower_bound: AsymptoticExpansion,
         upper_bound: AsymptoticExpansion,
+        bterm_round_to: None | int = None,
     ) -> AsymptoticRing:
     """Helper function to modify a given asymptotic ring such
     that an additional symbolic variable bounded in a specified
@@ -64,6 +65,7 @@ def _add_monomial_growth_restriction_to_ring(
             dependent_variable=dependent_variable,
             lower_bound=lower_bound,
             upper_bound=upper_bound,
+            bterm_round_to=bterm_round_to,
         ),
     )
     return AR.change_parameter(term_monoid_factory=term_monoid_factory)
@@ -73,6 +75,7 @@ def AsymptoticRingWithDependentVariable(
         dependent_variable,
         lower_bound_power,
         upper_bound_power,
+        bterm_round_to=None,
         **ring_kwargs
     ):
     """Instantiate a special (univariate) :class:`.AsymptoticRing` that
@@ -93,6 +96,10 @@ def AsymptoticRingWithDependentVariable(
 
     - ``upper_bound_power`` -- analogous to ``lower_bound_power``, just
       for the upper bound.
+
+    - ``bterm_round_to`` -- a positive integer or ``None`` (the default):
+      the number of floating point digits to which the coefficients
+      of B-terms are rounded.
 
     - ``ring_kwargs`` -- further keyword arguments being passed to
       the :class:`.AsymptoticRing` constructor.
@@ -123,7 +130,8 @@ def AsymptoticRingWithDependentVariable(
         AR,
         k,
         lower_bound=n**lower_bound_power,
-        upper_bound=n**upper_bound_power
+        upper_bound=n**upper_bound_power,
+        bterm_round_to=bterm_round_to,
     )
     n = AR_with_bound.gen()
     return AR_with_bound, n, k

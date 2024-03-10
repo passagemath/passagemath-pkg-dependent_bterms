@@ -13,6 +13,7 @@
 
 """
 
+from sage.functions.other import ceil
 from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing
 from sage.rings.asymptotic.term_monoid import (
     BTermMonoid,
@@ -26,6 +27,8 @@ from sage.rings.asymptotic.term_monoid import (
 from sage.symbolic.assumptions import assuming
 from sage.symbolic.expression import Expression
 from sage.symbolic.operators import add_vararg
+
+from sage.all import SR
 
 from .utils import evaluate
 
@@ -227,7 +230,7 @@ class MonBoundBTerm(BTerm):
         sage: A.<n> = AsymptoticRing('n^QQ', SR)
         sage: from sage.rings.asymptotic.term_monoid import DefaultTermMonoidFactory as TMF
         sage: k = SR.var('k')
-        sage: BTermMonoidClass = MonBoundBTermMonoidFactory(k, 1, n)
+        sage: BTermMonoidClass = MonBoundBTermMonoidFactory(k, 1, n, None)
         sage: MBTM = BTermMonoidClass(TMF, A.growth_group, A.coefficient_ring)
         sage: MBTM.variable_bounds
         (k, 1, n)
@@ -240,23 +243,34 @@ class MonBoundBTerm(BTerm):
     """
     def __init__(self, parent, growth, valid_from, **kwds):
         coef = kwds['coefficient']
+
+        def round_coef(c):
+            prec = parent._bterm_floating_point_digits
+            if prec is not None:
+                return SR(ceil(c * 10**prec) / 10**prec)
+            return c
+        
         if (
             isinstance(coef, Expression) 
             and parent.dependent_variable in coef.variables()
         ):
-            with assuming(parent.dependent_variable > 0):
+            with assuming(parent.dependent_variable > 0):        
                 coef_expanded = coef.simplify().expand()
-                if coef_expanded.operator() is add_vararg:
-                    coef_expanded = sum(
-                        (abs(op).simplify() for op in coef_expanded.operands()),
-                        coef_expanded.parent().zero()
-                    )
-            kwds['coefficient'] = coef_expanded
+                coef_expanded_bound = sum(
+                    round_coef(abs(c)) * parent.dependent_variable**p
+                    for (c, p) in coef_expanded.coefficients(parent.dependent_variable)
+                )
+            kwds['coefficient'] = coef_expanded_bound
+        else:
+            kwds['coefficient'] = round_coef(coef)
         super().__init__(parent, growth, valid_from, **kwds)
 
     def dependent_growth_range(self):
         dependent_variable, lower, upper = self.parent().variable_bounds
-        if dependent_variable not in self.coefficient.variables():
+        if not (
+            isinstance(self.coefficient, Expression) 
+            and dependent_variable in self.coefficient.variables()
+        ):
             return (self.growth, self.growth)
         
         boundary_growths = []
@@ -277,16 +291,56 @@ class MonBoundBTerm(BTerm):
         other_growth_lower, other_growth_upper = other.dependent_growth_range()
         return (
             (self.growth >= other.growth) and
-            (self_growth_lower / self.growth == other_growth_lower / other.growth) and
-            (self_growth_upper / self.growth == other_growth_upper / other.growth)
+            (self_growth_lower >= other_growth_lower) and
+            (self_growth_upper >= other_growth_upper)
         )
     
     def _absorb_(self, other):
-        return super()._absorb_(other)
+        r"""
+        
+        ::
+
+            sage: import dependent_bterms as dbt
+            sage: A, n, k = dbt.AsymptoticRingWithDependentVariable('n^QQ', 'k', 0, 1/2)
+            sage: A.B(k/n, valid_from=10) + k^5/n^5
+            B(101/100*abs(k)*n^(-1), n >= 10)
+
+            sage: A, n, k = dbt.AsymptoticRingWithDependentVariable('n^QQ', 'k', 0, 1/2, bterm_round_to=2)
+            sage: A.B(1/n, valid_from=10) + 1/n^10
+            B(101/100*n^(-1), n >= 10)
+        """
+        k, lower, upper = self.parent().variable_bounds
+        with assuming(k > 0):
+            self_coef = self.coefficient.simplify().expand()
+            other_coef = other.coefficient.simplify().expand()
+        
+        if self_coef.degree(k) >= other_coef.degree(k):
+            return super()._absorb_(other)
+
+        # Degree of other coefficient in k is higher,
+        # needs to be reduced first.
+
+        with assuming(k > 0):
+            other_coef_abs = other_coef.parent().zero()
+            if other_coef.operator() is add_vararg:
+                for op in other_coef.operands():
+                    other_coef_abs += abs(op).simplify()
+            else:
+                other_coef_abs = abs(other_coef).simplify()
+            
+        other_coef_bound = other_coef_abs(k=1)
+        deg_difference = other_coef.degree(k) - self_coef.degree(k)
+        [difference_term] = list((upper ** deg_difference).summands)
+
+        other_bound = other.parent()(
+            other.growth * difference_term.growth,
+            coefficient=other_coef_bound * k ** self_coef.degree(k)
+        )
+        return super()._absorb_(other_bound)
 
 
 
-def MonBoundBTermMonoidFactory(dependent_variable, lower_bound, upper_bound):
+def MonBoundBTermMonoidFactory(dependent_variable, lower_bound, upper_bound, bterm_round_to):
     _verify_variable_and_bounds(dependent_variable, lower_bound, upper_bound)
 
         
@@ -303,6 +357,7 @@ def MonBoundBTermMonoidFactory(dependent_variable, lower_bound, upper_bound):
             self._dependent_variable = dependent_variable
             self._lower_bound = lower_bound
             self._upper_bound = upper_bound
+            self._bterm_floating_point_digits = bterm_round_to
 
             super().__init__(
                 term_monoid_factory, growth_group, coefficient_ring, category
