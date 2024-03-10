@@ -70,7 +70,7 @@ def _distribute_coefficient(
     ):
     term_type = 'exact' if isinstance(summand, ExactTerm) else 'B'
     extra_args = {} if term_type == 'exact' else {'valid_from': summand.valid_from}
-    result = ring.zero()
+    result_summands = []
     k, _, upper = summand.parent().variable_bounds
     with assuming(k > 0):
         coef_expanded = summand.coefficient.simplify().expand()
@@ -81,19 +81,21 @@ def _distribute_coefficient(
             growth=summand.growth,
             valid_from=summand.valid_from,
         )
-        return evaluate(coef_expanded, **{str(k): upper}) * rest
+        return [evaluate(coef_expanded, **{str(k): upper}) * rest]
     if coef_expanded.operator() is add_vararg:
         for part_coef in coef_expanded.operands():
-            result += ring.create_summand(
-                term_type,
-                coefficient=part_coef,
-                growth=summand.growth,
-                **extra_args
+            result_summands.append(
+                ring.create_summand(
+                    term_type,
+                    coefficient=part_coef,
+                    growth=summand.growth,
+                    **extra_args
+                )
             )
     else:
-        result = ring(summand)
+        result_summands.append(ring(summand))
     
-    return result
+    return result_summands
 
 
 def simplify_expansion(
@@ -110,11 +112,13 @@ def simplify_expansion(
         elif isinstance(summand, BTerm):
             k, _, _ = summand.parent().variable_bounds
             if k in summand.coefficient.variables():
-                new_expr += _distribute_coefficient(
+                distributed_summands = _distribute_coefficient(
                     summand,
                     A,
                     simplify_bterm_growth=simplify_bterm_growth
                 )
+                for part_summand in distributed_summands:
+                    new_expr += part_summand
             else:
                 new_expr += A(summand)
     
@@ -122,7 +126,9 @@ def simplify_expansion(
         if summand.is_exact():
             k, _, _ = summand.parent().variable_bounds
             if k in summand.coefficient.variables():
-                new_expr += _distribute_coefficient(summand, A)
+                distributed_summands = _distribute_coefficient(summand, A)
+                for part_summand in distributed_summands:
+                    new_expr += part_summand
             else:
                 new_expr += A(summand)
 
