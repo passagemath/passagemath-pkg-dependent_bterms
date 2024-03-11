@@ -164,7 +164,6 @@ class MonBoundOTerm(OTerm):
     
     def can_absorb(self, other):
         if isinstance(other, TermWithCoefficient):
-            other_lower, other_upper = other.dependent_growth_range()
             return all(
                 self.growth >= growth_bound 
                 for growth_bound in other.dependent_growth_range()
@@ -280,7 +279,10 @@ class MonBoundBTerm(BTerm):
             eval_arg = {
                 str(dependent_variable): value
             }
-            term = evaluate(coef_simplified, **eval_arg).O()
+            term = evaluate(coef_simplified, **eval_arg)
+            if term.is_zero():
+                term = value.parent().one()
+            term = term.O()
             [term] = list(term.summands)
             boundary_growths.append(term.growth * self.growth)
         
@@ -400,7 +402,10 @@ class MonBoundExactTerm(ExactTerm):
             eval_arg = {
                 str(dependent_variable): value
             }
-            term = evaluate(coef_simplified, **eval_arg).O()
+            term = evaluate(coef_simplified, **eval_arg)
+            if term.is_zero():
+                term = value.parent().one()
+            term = term.O()
             [term] = list(term.summands)
             boundary_growths.append(term.growth * self.growth)
         
