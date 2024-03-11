@@ -271,12 +271,15 @@ def expansion_upper_bound(
         ValueError: No same-order bound can be constructed for O(n^(-1))
 
         sage: expansion_upper_bound(-k/n)
-        abs(k)*n^(-1)
+        k*n^(-1)
         sage: expansion_upper_bound(-k/n, numeric=True, valid_from=10)
         1/10*sqrt(10)
         
         sage: expansion_upper_bound(A.B(k/n, valid_from=10), numeric=True)
         1/10*sqrt(10)
+
+        sage: expansion_upper_bound((-2 + k)/n, numeric=True, valid_from=10)
+        1/10*sqrt(10) + 1/5
 
     """
     A = asy.parent()
@@ -284,9 +287,20 @@ def expansion_upper_bound(
     valid_from = {v: valid_from or A.coefficient_ring.one() for v in asy.variable_names()}
     for summand in asy.summands:
         if isinstance(summand, TermWithCoefficient):
+            coef = summand.coefficient
+            if (
+                isinstance(coef, Expression)
+                and hasattr(summand.parent(), 'dependent_variable')
+            ):
+                k = summand.parent().dependent_variable
+                with assuming(k > 0):
+                    coef = coef.simplify().expand()
+                    coef = sum(abs(c) * k**p for (c, p) in coef.coefficients(k))
+            else:
+                coef = abs(coef)
             bound += A.create_summand(
                 'exact',
-                coefficient=abs(summand.coefficient),
+                coefficient=coef,
                 data=summand.growth,
             )
             if isinstance(summand, BTerm):
