@@ -107,6 +107,30 @@ class AsymptoticRingWithCustomPosetKey(AsymptoticRing):
 
 
 
+class DependentGrowthAwareMixin:
+    """Mixin class for implementing properties related to the
+    monomial bounds.
+    """
+    @property
+    def dependent_variable(self):
+        return self._dependent_variable
+    
+    @property
+    def dependent_variable_lower_bound(self):
+        return self._lower_bound
+    
+    @property
+    def dependent_variable_upper_bound(self):
+        return self._upper_bound
+    
+    @property
+    def variable_bounds(self):
+        return (
+            self.dependent_variable,
+            self.dependent_variable_lower_bound,
+            self.dependent_variable_upper_bound
+        )
+
 class MonBoundOTerm(OTerm):
     """OTerm that is coefficient-growth aware.
 
@@ -174,7 +198,7 @@ class MonBoundOTerm(OTerm):
 def MonBoundOTermMonoidFactory(dependent_variable, lower_bound, upper_bound):
     _verify_variable_and_bounds(dependent_variable, lower_bound, upper_bound)
 
-    class MonBoundOTermMonoid(OTermMonoid):
+    class MonBoundOTermMonoid(OTermMonoid, DependentGrowthAwareMixin):
         Element = MonBoundOTerm
 
         def __init__(
@@ -199,27 +223,8 @@ def MonBoundOTermMonoidFactory(dependent_variable, lower_bound, upper_bound):
                 pass
 
 
-        @property
-        def dependent_variable(self):
-            return self._dependent_variable
-        
-        @property
-        def dependent_variable_lower_bound(self):
-            return self._lower_bound
-        
-        @property
-        def dependent_variable_upper_bound(self):
-            return self._upper_bound
-        
-        @property
-        def variable_bounds(self):
-            return (
-                self.dependent_variable,
-                self.dependent_variable_lower_bound,
-                self.dependent_variable_upper_bound
-            )
-    
     return MonBoundOTermMonoid
+
 
 class MonBoundBTerm(BTerm):
     """BTerm that is coefficient growth aware.
@@ -346,7 +351,7 @@ def MonBoundBTermMonoidFactory(dependent_variable, lower_bound, upper_bound, bte
     _verify_variable_and_bounds(dependent_variable, lower_bound, upper_bound)
 
         
-    class MonBoundBTermMonoid(BTermMonoid):
+    class MonBoundBTermMonoid(BTermMonoid, DependentGrowthAwareMixin):
         Element = MonBoundBTerm
 
         def __init__(
@@ -365,26 +370,6 @@ def MonBoundBTermMonoidFactory(dependent_variable, lower_bound, upper_bound, bte
                 term_monoid_factory, growth_group, coefficient_ring, category
             )
 
-        
-        @property
-        def dependent_variable(self):
-            return self._dependent_variable
-        
-        @property
-        def dependent_variable_lower_bound(self):
-            return self._lower_bound
-        
-        @property
-        def dependent_variable_upper_bound(self):
-            return self._upper_bound
-        
-        @property
-        def variable_bounds(self):
-            return (
-                self.dependent_variable,
-                self.dependent_variable_lower_bound,
-                self.dependent_variable_upper_bound
-            )
     
     return MonBoundBTermMonoid
 
@@ -419,7 +404,7 @@ def MonBoundExactTermMonoidFactory(
     _verify_variable_and_bounds(dependent_variable, lower_bound, upper_bound)
     
 
-    class MonBoundExactTermMonoid(ExactTermMonoid):
+    class MonBoundExactTermMonoid(ExactTermMonoid, DependentGrowthAwareMixin):
         Element = MonBoundExactTerm
 
         def __init__(
@@ -435,26 +420,6 @@ def MonBoundExactTermMonoidFactory(
 
             super().__init__(
                 term_monoid_factory, growth_group, coefficient_ring, category
-            )
-
-        @property
-        def dependent_variable(self):
-            return self._dependent_variable
-        
-        @property
-        def dependent_variable_lower_bound(self):
-            return self._lower_bound
-        
-        @property
-        def dependent_variable_upper_bound(self):
-            return self._upper_bound
-        
-        @property
-        def variable_bounds(self):
-            return (
-                self.dependent_variable,
-                self.dependent_variable_lower_bound,
-                self.dependent_variable_upper_bound
             )
 
     return MonBoundExactTermMonoid
