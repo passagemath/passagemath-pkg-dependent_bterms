@@ -1,6 +1,11 @@
-"""
+"""Extension of SageMath's asymptotic ring that allows handling
+monomially bounded auxiliary variables.
 
-::
+Everything in the ``utils`` module, as well as the 
+``AsymptoticRingWithDependentVariable`` convenience function are
+being made available as top-level imports.
+
+TESTS::
 
     sage: import dependent_bterms as dbt
     sage: AR, n, k = dbt.AsymptoticRingWithDependentVariable('n^QQ', 'k', 0, 1/2)

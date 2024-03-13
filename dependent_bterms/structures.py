@@ -1,6 +1,9 @@
-"""
+"""Auxiliary structures for handling dependent variable growth ranges.
 
-::
+In this module, extensions of term monoids are provided that are aware
+of potential growth contributions in term coefficients.
+
+TESTS::
 
     sage: import dependent_bterms as dbt
     sage: AR, n, k = dbt.AsymptoticRingWithDependentVariable('n^QQ', 'k', 0, 1/2)
@@ -34,7 +37,11 @@ from .utils import evaluate
 
 
 def _verify_variable_and_bounds(dependent_variable, lower_bound, upper_bound):
+    """Verifies that the minimal requirements for the dependent variable
+    are met.
 
+    Internal helper function.
+    """
     if not dependent_variable.is_symbol():
         raise ValueError("A suitable dependent variable must be passed.")
 

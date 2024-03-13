@@ -1,6 +1,9 @@
-"""
+"""Construction of the modified asymptotic ring with a dependent variable.
 
-::
+This module contains the central interface of our package, the
+:func:`.AsymptoticRingWithDependentVariable` function.
+
+TESTS::
 
     sage: import dependent_bterms as dbt
     sage: AR, n, k = dbt.AsymptoticRingWithDependentVariable('n^QQ', 'k', 0, 1/2)
