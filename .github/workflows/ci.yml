@@ -24,6 +24,7 @@ jobs:
           mamba install -n test sagelib=${{ matrix.sagelib }}
           mamba install --quiet -n test numpy sympy gap-defaults matplotlib-base maxima ipywidgets
           conda list
+          apt update && apt install -y fplll
       - name: Install dependent_bterms
         shell: bash -l {0}
         run: |
