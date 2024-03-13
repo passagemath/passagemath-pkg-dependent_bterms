@@ -1,6 +1,7 @@
-"""
+"""Utility functions for working with expansions in the special
+asymptotic ring provided by this package.
 
-::
+TESTS::
 
     sage: import dependent_bterms as dbt
     sage: AR, n, k = dbt.AsymptoticRingWithDependentVariable('n^QQ', 'k', 0, 1/2)
@@ -35,11 +36,19 @@ __all__ = [
     'taylor_with_explicit_error',
 ]
 
+
 def evaluate(expression: Expression, **eval_args):
     """Evaluate a symbolic expression without necessarily
     returning a result in the symbolic ring.
+
+    INPUT:
+
+    - ``expression`` -- a symbolic expression.
+
+    - ``eval_args`` -- the values to be input for the variables
+      in keyword argument form.
     
-    Tests::
+    EXAMPLES::
 
         sage: from dependent_bterms import evaluate
         sage: var('a b c')
@@ -103,7 +112,32 @@ def simplify_expansion(
         simplify_bterm_growth: bool = False,
     ):
     """Simplify an asymptotic expansion by allowing error terms
-    to try and absorb parts of exact terms."""
+    to try and absorb parts of exact terms.
+
+    INPUT:
+
+    - ``expr`` -- an asymptotic expansion.
+
+    - ``simplify_bterm_growth`` -- if ``False`` (the default), B-terms
+      are only expanded but remain otherwise unchanged. If ``True``,
+      the upper bound of the monomially bounded variable is substituted
+      which effectively collapses the B-terms to a single, "absolute" term.
+    
+    EXAMPLES::
+
+        sage: import dependent_bterms as dbt
+        sage: A, n, k = dbt.AsymptoticRingWithDependentVariable('n^QQ', 'k', 0, 1/2, bterm_round_to=1)
+        sage: asy = (k + 1)^5*n + A.B(n^2, valid_from=10); asy
+        ((k + 1)^5)*n + B(n^2, n >= 10)
+        sage: dbt.simplify_expansion(asy)
+        (k^5 + 5*k^4 + 10*k^3)*n + B(127/10*n^2, n >= 10)
+
+        sage: dbt.simplify_expansion(A.B((k + 1)/n, valid_from=10))
+        B((abs(k + 1))*n^(-1), n >= 10)
+        sage: dbt.simplify_expansion(A.B((k + 1)/n, valid_from=10), simplify_bterm_growth=True)
+        B(7/5*n^(-1/2), n >= 10)
+ 
+    """
     A = expr.parent()
     new_expr = A.zero()
     for summand in expr.summands:
@@ -135,11 +169,21 @@ def simplify_expansion(
     return new_expr
 
 
-def round_bterm_coefficients(expansion: AsymptoticExpansion, floating_point_digits=0):
+def round_bterm_coefficients(
+        expansion: AsymptoticExpansion,
+        floating_point_digits: int = 0
+    ):
     """Rounds the coefficients of all BTerms in the given expansion to the
-    next integer.
+    next integer (or rational with respect to the provided precision).
+
+    INPUT:
+
+    - ``expansion`` -- an asymptotic expansion.
+
+    - ``floating_point_digits`` -- the number of floating point digits
+      to which the B-term coefficients should be rounded to.
     
-    ::
+    EXAMPLES::
 
         sage: import dependent_bterms as dbt
         sage: A.<n> = AsymptoticRing('n^QQ', QQ)
@@ -166,7 +210,8 @@ def round_bterm_coefficients(expansion: AsymptoticExpansion, floating_point_digi
                 t.coefficient = ceil(t.coefficient * 10**floating_point_digits) / 10**floating_point_digits
         return t
     
-    # note: expansion.summands.copy() returns a shallow copy
+    # note: expansion.summands.copy() returns a shallow copy, which makes
+    # this somewhat cumbersome.
     import copy
     P = expansion.parent()
     expansion_copy = sum(
@@ -181,7 +226,14 @@ def set_bterm_valid_from(asy: AsymptoticExpansion, valid_from: dict[str, int] | 
     """Changes the point from which a B-Term bound is valid
     such that the term remains valid.
 
-    That is, the bounds can only be increased.
+    The validity bounds can only be increased.
+
+    INPUT:
+
+    - ``asy`` - an asymptotic expansion.
+
+    - ``valid_from`` -- a dictionary mapping variable names to the new
+      validity bounds, or a single integer to be used for all variables.
 
     TESTS::
 
@@ -234,18 +286,15 @@ def expansion_upper_bound(
 
     Raises an error if no such bound can be constructed.
     
-    PARAMETERS
-    ----------
-    numeric
-        If false (the default), the constructed bound is
-        returned as an exact asymptotic expansion containing
-        variables. Otherwise, a positive number is returned
-        which results from substituting the variables in the
-        "symbolic" bound with the smallest integers such that
-        all involved B-Terms are valid.
-    valid_from
-        A new ``valid_from`` value to be used for all B-Terms.
-        
+    INPUTS:
+
+    - ``numeric`` -- If false (the default), the constructed bound is
+      returned as an exact asymptotic expansion containing variables. Otherwise,
+      a positive number is returned which results from substituting the variables
+      in the "symbolic" bound with the smallest integers such that all involved 
+      B-terms are valid.
+
+    - ``valid_from`` --  A new ``valid_from`` value to be used for all B-Terms.
 
     EXAMPLES::
 
@@ -336,12 +385,28 @@ def taylor_with_explicit_error(
         valid_from=None,
         round_constant=True,
     ):
-    r"""Determines the series expansion with explicit error bounds
+    r"""Determines the Taylor series expansion with explicit error bounds
     of a given function `f` at a specified asymptotic term.
 
     The term is assumed to be in o(1).
 
-    TESTS::
+    INPUT:
+
+    - ``f`` -- a callable function to be expanded.
+
+    - ``term`` -- the asymptotic expansion (converging to 0) describing
+      the center of the Taylor expansion.
+
+    - ``order`` -- the order of the expansion. If ``None`` (the default),
+      the default precision of the underlying asymptotic ring is used.
+    
+    - ``valid_from`` -- the point from which the error term is valid.
+
+    - ``round_constant`` -- if ``True`` (the default), the bound for the
+      derivative used to construct the error term is rounded to the closest
+      integer.
+
+    EXAMPLES::
 
         sage: import dependent_bterms as dbt
         sage: A, n, k = dbt.AsymptoticRingWithDependentVariable('n^QQ', 'k', 0, 1/2)

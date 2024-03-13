@@ -91,6 +91,9 @@ def _element_key(element):
 
 
 class AsymptoticRingWithCustomPosetKey(AsymptoticRing):
+    """Asymptotic ring that constructs its expansions using a custom
+    poset key.
+    """
     def _element_constructor_(self, data, simplify=True, convert=True):
         from sage.data_structures.mutable_poset import MutablePoset
         from sage.rings.asymptotic.term_monoid import can_absorb, absorption
@@ -141,7 +144,7 @@ class DependentGrowthAwareMixin:
 class MonBoundOTerm(OTerm):
     """OTerm that is coefficient-growth aware.
 
-    ::
+    TESTS::
 
         sage: import dependent_bterms as dbt
         sage: A, n, k = dbt.AsymptoticRingWithDependentVariable('n^QQ', 'k', -1/2, 1/2, default_prec=4)
@@ -234,9 +237,10 @@ def MonBoundOTermMonoidFactory(dependent_variable, lower_bound, upper_bound):
 
 
 class MonBoundBTerm(BTerm):
-    """BTerm that is coefficient growth aware.
+    """A B-term that is aware of the growth of its coefficients.
     
-    ::
+    TESTS::
+
         sage: from dependent_bterms.structures import MonBoundBTermMonoidFactory
         sage: A.<n> = AsymptoticRing('n^QQ', SR)
         sage: from sage.rings.asymptotic.term_monoid import DefaultTermMonoidFactory as TMF
@@ -310,9 +314,10 @@ class MonBoundBTerm(BTerm):
         )
     
     def _absorb_(self, other):
-        r"""
+        r"""Custom absorption mechanism for B-terms with dependent variables
+        in its coefficients.
         
-        ::
+        TESTS::
 
             sage: import dependent_bterms as dbt
             sage: A, n, k = dbt.AsymptoticRingWithDependentVariable('n^QQ', 'k', 0, 1/2)
