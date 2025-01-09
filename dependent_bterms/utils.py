@@ -23,7 +23,10 @@ from sage.symbolic.operators import add_vararg
 from sage.rings.asymptotic.asymptotic_ring import AsymptoticExpansion, AsymptoticRing
 from sage.rings.asymptotic.term_monoid import BTerm, ExactTerm, OTerm, TermWithCoefficient
 
-from sage.all import oo, SR, RIF, ZZ
+from sage.rings.infinity import Infinity as oo
+from sage.symbolic.ring import SR
+from sage.rings.real_mpfi import RIF
+from sage.rings.integer_ring import Z as ZZ
 
 import dependent_bterms as dbt
 

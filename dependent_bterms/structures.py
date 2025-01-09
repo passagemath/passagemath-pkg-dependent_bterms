@@ -31,7 +31,7 @@ from sage.symbolic.assumptions import assuming
 from sage.symbolic.expression import Expression
 from sage.symbolic.operators import add_vararg
 
-from sage.all import SR
+from sage.symbolic.ring import SR
 
 from .utils import evaluate
 
