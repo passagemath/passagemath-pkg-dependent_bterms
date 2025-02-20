@@ -132,6 +132,14 @@ def AsymptoticRingWithDependentVariable(
         <class 'dependent_bterms.structures.MonBoundBTermMonoidFactory.<locals>.MonBoundBTermMonoid'>
         sage: O(k*n)
         O(n^(3/2))
+
+    Make sure that scaled monomial bounds also work as intended::
+
+        sage: A, n, k = dbt.AsymptoticRingWithDependentVariable('n^QQ', 'k', 0, 1/2,
+        ....:     upper_bound_factor=2, default_prec=5)
+        sage: dbt.simplify_expansion((n*k).B(valid_from=10), simplify_bterm_growth=True)
+        B(2*n^(3/2), n >= 10)
+
     """
     AR = AsymptoticRingWithCustomPosetKey(
         growth_group=growth_group,
