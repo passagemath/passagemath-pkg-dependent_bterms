@@ -28,7 +28,7 @@ from sage.rings.asymptotic.term_monoid import (
     OTermMonoid,
     OTerm,
     TermWithCoefficient,
-    ExactTerm
+    ExactTerm,
 )
 from sage.symbolic.assumptions import assuming
 from sage.symbolic.expression import Expression
@@ -49,12 +49,15 @@ def _verify_variable_and_bounds(dependent_variable, lower_bound, upper_bound):
         raise ValueError("A suitable dependent variable must be passed.")
 
     if lower_bound is None or upper_bound is None:
-        raise ValueError("The lower und upper bounds for the dependent variable must be set.")
+        raise ValueError(
+            "The lower und upper bounds for the dependent variable must be set."
+        )
+
 
 def _element_key(element):
     """Determine the key for sorting the given element into the poset
     underlying an asymptotic expansion.
-    
+
     The first component of the key is a growth bound consisting
     of both the actual growth in terms of the independent variable,
     combined with an estimate for a growth of the coefficient (using
@@ -62,7 +65,7 @@ def _element_key(element):
     The second component is the element growth (regardless of any coefficient).
     """
     growth_bound = None
-    if hasattr(element.parent(), 'variable_bounds'):
+    if hasattr(element.parent(), "variable_bounds"):
         bound_var, lower, upper = element.parent().variable_bounds
 
         if isinstance(element, TermWithCoefficient):
@@ -78,18 +81,14 @@ def _element_key(element):
                     if asy_bound.is_zero():
                         asy_bound = bound.parent().one()
                     bounds.append(asy_bound.O())
-                
-                coef_bound = max(
-                    bounds,
-                    key=lambda expr: list(expr.summands)[0].growth
-                )
+
+                coef_bound = max(bounds, key=lambda expr: list(expr.summands)[0].growth)
                 [coef_bound_term] = list(coef_bound.summands)
                 growth_bound = coef_bound_term.growth * element.growth
 
-    
     if growth_bound is None:
         growth_bound = element.growth
-    
+
     return (growth_bound, element.growth)
 
 
@@ -97,10 +96,14 @@ class AsymptoticRingWithCustomPosetKey(AsymptoticRing):
     """Asymptotic ring that constructs its expansions using a custom
     poset key.
     """
+
     def _element_constructor_(self, data, simplify=True, convert=True):
         from sage.data_structures.mutable_poset import MutablePoset
         from sage.rings.asymptotic.term_monoid import can_absorb, absorption
-        element = super()._element_constructor_(data, simplify=simplify, convert=convert)
+
+        element = super()._element_constructor_(
+            data, simplify=simplify, convert=convert
+        )
 
         element._summands_ = MutablePoset(
             list(element.summands),
@@ -114,35 +117,35 @@ class AsymptoticRingWithCustomPosetKey(AsymptoticRing):
     def _create_empty_summands_():
         from sage.data_structures.mutable_poset import MutablePoset
         from sage.rings.asymptotic.term_monoid import can_absorb, absorption
-        return MutablePoset(key=_element_key,
-                            can_merge=can_absorb,
-                            merge=absorption)
 
+        return MutablePoset(key=_element_key, can_merge=can_absorb, merge=absorption)
 
 
 class DependentGrowthAwareMixin:
     """Mixin class for implementing properties related to the
     monomial bounds.
     """
+
     @property
     def dependent_variable(self):
         return self._dependent_variable
-    
+
     @property
     def dependent_variable_lower_bound(self):
         return self._lower_bound
-    
+
     @property
     def dependent_variable_upper_bound(self):
         return self._upper_bound
-    
+
     @property
     def variable_bounds(self):
         return (
             self.dependent_variable,
             self.dependent_variable_lower_bound,
-            self.dependent_variable_upper_bound
+            self.dependent_variable_upper_bound,
         )
+
 
 class MonBoundOTerm(OTerm):
     """OTerm that is coefficient-growth aware.
@@ -176,33 +179,31 @@ class MonBoundOTerm(OTerm):
         sage: exp(k/n)
         1 + k*n^(-1) + 1/2*k^2*n^(-2) + 1/6*k^3*n^(-3) + O(n^(-2))
     """
+
     def __init__(self, parent, growth, coefficient):
         self._growth = growth
         if (
-            isinstance(coefficient, Expression) 
+            isinstance(coefficient, Expression)
             and parent.dependent_variable in coefficient.variables()
         ):
-            
             _, lower, upper = parent.variable_bounds
             bounds = []
             for value in (lower, upper):
-                eval_arg = {
-                    str(parent.dependent_variable): value
-                }
+                eval_arg = {str(parent.dependent_variable): value}
                 bounds.append(evaluate(coefficient, **eval_arg).O())
 
             [coefficient_bound] = list(sum(bounds).summands)
             growth *= coefficient_bound.growth
-            
+
         super().__init__(parent, growth)
 
     def dependent_growth_range(self):
         return (self.growth, self.growth)
-    
+
     def can_absorb(self, other):
         if isinstance(other, TermWithCoefficient):
             return all(
-                self.growth >= growth_bound 
+                self.growth >= growth_bound
                 for growth_bound in other.dependent_growth_range()
             )
         return self.growth >= other.growth
@@ -231,17 +232,16 @@ def MonBoundOTermMonoidFactory(dependent_variable, lower_bound, upper_bound):
 
         def _convert_construction_(self, kwds_construction):
             try:
-                del kwds_construction['valid_from']
+                del kwds_construction["valid_from"]
             except KeyError:
                 pass
-
 
     return MonBoundOTermMonoid
 
 
 class MonBoundBTerm(BTerm):
     """A B-term that is aware of the growth of its coefficients.
-    
+
     TESTS::
 
         sage: from dependent_bterms.structures import MonBoundBTermMonoidFactory
@@ -259,67 +259,66 @@ class MonBoundBTerm(BTerm):
         sage: A.create_summand(MBTM, coefficient=k-1, growth=ng^(-1), valid_from=10)
         B((abs(k + 1))*n^(-1), n >= 10)
     """
+
     def __init__(self, parent, growth, valid_from, **kwds):
-        coef = kwds['coefficient']
+        coef = kwds["coefficient"]
 
         def round_coef(c):
             prec = parent._bterm_floating_point_digits
             if prec is not None:
                 return SR(ceil(c * 10**prec) / 10**prec)
             return c
-        
+
         if (
-            isinstance(coef, Expression) 
+            isinstance(coef, Expression)
             and parent.dependent_variable in coef.variables()
         ):
-            with assuming(parent.dependent_variable > 0):        
+            with assuming(parent.dependent_variable > 0):
                 coef_expanded = coef.simplify().expand()
                 coef_expanded_bound = sum(
                     round_coef(abs(c)) * parent.dependent_variable**p
                     for (c, p) in coef_expanded.coefficients(parent.dependent_variable)
                 )
-            kwds['coefficient'] = coef_expanded_bound
+            kwds["coefficient"] = coef_expanded_bound
         else:
-            kwds['coefficient'] = round_coef(coef)
+            kwds["coefficient"] = round_coef(coef)
         super().__init__(parent, growth, valid_from, **kwds)
 
     def dependent_growth_range(self):
         dependent_variable, lower, upper = self.parent().variable_bounds
         if not (
-            isinstance(self.coefficient, Expression) 
+            isinstance(self.coefficient, Expression)
             and dependent_variable in self.coefficient.variables()
         ):
             return (self.growth, self.growth)
-        
+
         boundary_growths = []
         with assuming(dependent_variable > 0):
             coef_simplified = self.coefficient.simplify()
         for value in (lower, upper):
-            eval_arg = {
-                str(dependent_variable): value
-            }
+            eval_arg = {str(dependent_variable): value}
             term = evaluate(coef_simplified, **eval_arg)
             if term.is_zero():
                 term = value.parent().one()
             term = term.O()
             [term] = list(term.summands)
             boundary_growths.append(term.growth * self.growth)
-        
+
         return (min(boundary_growths), max(boundary_growths))
-    
+
     def can_absorb(self, other):
         self_growth_lower, self_growth_upper = self.dependent_growth_range()
         other_growth_lower, other_growth_upper = other.dependent_growth_range()
         return (
-            (self.growth >= other.growth) and
-            (self_growth_lower >= other_growth_lower) and
-            (self_growth_upper >= other_growth_upper)
+            (self.growth >= other.growth)
+            and (self_growth_lower >= other_growth_lower)
+            and (self_growth_upper >= other_growth_upper)
         )
-    
+
     def _absorb_(self, other):
         r"""Custom absorption mechanism for B-terms with dependent variables
         in its coefficients.
-        
+
         TESTS::
 
             sage: import dependent_bterms as dbt
@@ -335,7 +334,7 @@ class MonBoundBTerm(BTerm):
         with assuming(k > 0):
             self_coef = self.coefficient.simplify().expand()
             other_coef = other.coefficient.simplify().expand()
-        
+
         if self_coef.degree(k) >= other_coef.degree(k):
             return super()._absorb_(other)
 
@@ -349,23 +348,23 @@ class MonBoundBTerm(BTerm):
                     other_coef_abs += abs(op).simplify()
             else:
                 other_coef_abs = abs(other_coef).simplify()
-            
+
         other_coef_bound = other_coef_abs(k=1)
         deg_difference = other_coef.degree(k) - self_coef.degree(k)
-        [difference_term] = list((upper ** deg_difference).summands)
+        [difference_term] = list((upper**deg_difference).summands)
 
         other_bound = other.parent()(
             other.growth * difference_term.growth,
-            coefficient=other_coef_bound * k ** self_coef.degree(k)
+            coefficient=other_coef_bound * k ** self_coef.degree(k),
         )
         return super()._absorb_(other_bound)
 
 
-
-def MonBoundBTermMonoidFactory(dependent_variable, lower_bound, upper_bound, bterm_round_to):
+def MonBoundBTermMonoidFactory(
+    dependent_variable, lower_bound, upper_bound, bterm_round_to
+):
     _verify_variable_and_bounds(dependent_variable, lower_bound, upper_bound)
 
-        
     class MonBoundBTermMonoid(BTermMonoid, DependentGrowthAwareMixin):
         Element = MonBoundBTerm
 
@@ -385,39 +384,32 @@ def MonBoundBTermMonoidFactory(dependent_variable, lower_bound, upper_bound, bte
                 term_monoid_factory, growth_group, coefficient_ring, category
             )
 
-    
     return MonBoundBTermMonoid
 
-class MonBoundExactTerm(ExactTerm):
 
+class MonBoundExactTerm(ExactTerm):
     def dependent_growth_range(self):
         dependent_variable, lower, upper = self.parent().variable_bounds
         if dependent_variable not in self.coefficient.variables():
             return (self.growth, self.growth)
-        
+
         boundary_growths = []
         with assuming(dependent_variable > 0):
             coef_simplified = self.coefficient.simplify()
         for value in (lower, upper):
-            eval_arg = {
-                str(dependent_variable): value
-            }
+            eval_arg = {str(dependent_variable): value}
             term = evaluate(coef_simplified, **eval_arg)
             if term.is_zero():
                 term = value.parent().one()
             term = term.O()
             [term] = list(term.summands)
             boundary_growths.append(term.growth * self.growth)
-        
+
         return (min(boundary_growths), max(boundary_growths))
 
-def MonBoundExactTermMonoidFactory(
-        dependent_variable,
-        lower_bound,
-        upper_bound
-    ):
+
+def MonBoundExactTermMonoidFactory(dependent_variable, lower_bound, upper_bound):
     _verify_variable_and_bounds(dependent_variable, lower_bound, upper_bound)
-    
 
     class MonBoundExactTermMonoid(ExactTermMonoid, DependentGrowthAwareMixin):
         Element = MonBoundExactTerm

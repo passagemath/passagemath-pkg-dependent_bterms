@@ -33,12 +33,12 @@ from .structures import (
 
 
 def _add_monomial_growth_restriction_to_ring(
-        AR: AsymptoticRing,
-        dependent_variable: Expression,
-        lower_bound: AsymptoticExpansion,
-        upper_bound: AsymptoticExpansion,
-        bterm_round_to: None | int = None,
-    ) -> AsymptoticRing:
+    AR: AsymptoticRing,
+    dependent_variable: Expression,
+    lower_bound: AsymptoticExpansion,
+    upper_bound: AsymptoticExpansion,
+    bterm_round_to: None | int = None,
+) -> AsymptoticRing:
     """Helper function to modify a given asymptotic ring such
     that an additional symbolic variable bounded in a specified
     range is supported.
@@ -75,14 +75,15 @@ def _add_monomial_growth_restriction_to_ring(
     )
     return AR.change_parameter(term_monoid_factory=term_monoid_factory)
 
+
 def AsymptoticRingWithDependentVariable(
-        growth_group,
-        dependent_variable,
-        lower_bound_power,
-        upper_bound_power,
-        bterm_round_to=None,
-        **ring_kwargs
-    ):
+    growth_group,
+    dependent_variable,
+    lower_bound_power,
+    upper_bound_power,
+    bterm_round_to=None,
+    **ring_kwargs,
+):
     """Instantiate a special (univariate) :class:`.AsymptoticRing` that
     is aware of a monomially bounded symbolic variable.
 
@@ -92,7 +93,7 @@ def AsymptoticRingWithDependentVariable(
       the :class:`.AsymptoticRing`.
 
     - ``dependent_variable`` -- a string representing a variable
-      in the :class:`.SymbolicRing`, or any valid input for 
+      in the :class:`.SymbolicRing`, or any valid input for
       :meth:`.SymbolicRing.var`.
 
     - ``lower_bound_power`` -- a nonnegative real number, the power
@@ -127,7 +128,7 @@ def AsymptoticRingWithDependentVariable(
     AR = AsymptoticRingWithCustomPosetKey(
         growth_group=growth_group,
         coefficient_ring=SR,
-        **ring_kwargs
+        **ring_kwargs,
     )
     k = SR.var(dependent_variable)
     n = AR.gen()

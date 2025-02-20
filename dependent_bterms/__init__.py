@@ -1,7 +1,7 @@
 """Extension of SageMath's asymptotic ring that allows handling
 monomially bounded auxiliary variables.
 
-Everything in the ``utils`` module, as well as the 
+Everything in the ``utils`` module, as well as the
 ``AsymptoticRingWithDependentVariable`` convenience function are
 being made available as top-level imports.
 
