@@ -14,6 +14,9 @@ TESTS::
 
 """
 
+from __future__ import annotations
+
+
 from sage.arith.srange import srange
 from sage.ext.fast_callable import fast_callable
 from sage.functions.other import ceil
