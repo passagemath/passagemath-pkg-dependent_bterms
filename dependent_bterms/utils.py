@@ -24,7 +24,12 @@ from sage.symbolic.assumptions import assuming
 from sage.symbolic.expression import Expression
 from sage.symbolic.operators import add_vararg
 from sage.rings.asymptotic.asymptotic_ring import AsymptoticExpansion, AsymptoticRing
-from sage.rings.asymptotic.term_monoid import BTerm, ExactTerm, OTerm, TermWithCoefficient
+from sage.rings.asymptotic.term_monoid import (
+    BTerm,
+    ExactTerm,
+    OTerm,
+    TermWithCoefficient,
+)
 
 from sage.rings.infinity import Infinity as oo
 from sage.symbolic.ring import SR
@@ -34,12 +39,12 @@ from sage.rings.integer_ring import Z as ZZ
 import dependent_bterms as dbt
 
 __all__ = [
-    'evaluate',
-    'simplify_expansion',
-    'round_bterm_coefficients',
-    'set_bterm_valid_from',
-    'expansion_upper_bound',
-    'taylor_with_explicit_error',
+    "evaluate",
+    "simplify_expansion",
+    "round_bterm_coefficients",
+    "set_bterm_valid_from",
+    "expansion_upper_bound",
+    "taylor_with_explicit_error",
 ]
 
 
@@ -53,7 +58,7 @@ def evaluate(expression: Expression, **eval_args):
 
     - ``eval_args`` -- the values to be input for the variables
       in keyword argument form.
-    
+
     EXAMPLES::
 
         sage: from dependent_bterms import evaluate
@@ -64,13 +69,13 @@ def evaluate(expression: Expression, **eval_args):
         (6, Integer Ring)
         sage: evaluate(a + b, b=42)
         a + 42
-        
+
         sage: A.<n> = AsymptoticRing('n^QQ', SR, default_prec=3)
         sage: evaluate(a/(b + c), a=n, b=1)
         (1/(c + 1))*n
         sage: evaluate(a/(b + c), a=pi, b=-1/n, c=1)
         pi + pi*n^(-1) + pi*n^(-2) + O(n^(-3))
-    
+
     """
     expression_vars = expression.variables()
     function_args = [eval_args.get(str(var), var) for var in expression_vars]
@@ -79,17 +84,17 @@ def evaluate(expression: Expression, **eval_args):
 
 
 def _distribute_coefficient(
-        summand: TermWithCoefficient,
-        ring: AsymptoticRing,
-        simplify_bterm_growth: bool = False,
-    ):
-    term_type = 'exact' if isinstance(summand, ExactTerm) else 'B'
-    extra_args = {} if term_type == 'exact' else {'valid_from': summand.valid_from}
+    summand: TermWithCoefficient,
+    ring: AsymptoticRing,
+    simplify_bterm_growth: bool = False,
+):
+    term_type = "exact" if isinstance(summand, ExactTerm) else "B"
+    extra_args = {} if term_type == "exact" else {"valid_from": summand.valid_from}
     result_summands = []
     k, _, upper = summand.parent().variable_bounds
     with assuming(k > 0):
         coef_expanded = summand.coefficient.simplify().expand()
-    if term_type == 'B' and simplify_bterm_growth:
+    if term_type == "B" and simplify_bterm_growth:
         rest = ring.create_summand(
             term_type,
             coefficient=ring.coefficient_ring.one(),
@@ -104,19 +109,19 @@ def _distribute_coefficient(
                     term_type,
                     coefficient=part_coef,
                     growth=summand.growth,
-                    **extra_args
+                    **extra_args,
                 )
             )
     else:
         result_summands.append(ring(summand))
-    
+
     return result_summands
 
 
 def simplify_expansion(
-        expr: AsymptoticExpansion,
-        simplify_bterm_growth: bool = False,
-    ):
+    expr: AsymptoticExpansion,
+    simplify_bterm_growth: bool = False,
+):
     """Simplify an asymptotic expansion by allowing error terms
     to try and absorb parts of exact terms.
 
@@ -128,7 +133,7 @@ def simplify_expansion(
       are only expanded but remain otherwise unchanged. If ``True``,
       the upper bound of the monomially bounded variable is substituted
       which effectively collapses the B-terms to a single, "absolute" term.
-    
+
     EXAMPLES::
 
         sage: import dependent_bterms as dbt
@@ -142,7 +147,7 @@ def simplify_expansion(
         B((abs(k + 1))*n^(-1), n >= 10)
         sage: dbt.simplify_expansion(A.B((k + 1)/n, valid_from=10), simplify_bterm_growth=True)
         B(7/5*n^(-1/2), n >= 10)
- 
+
     """
     A = expr.parent()
     new_expr = A.zero()
@@ -153,15 +158,13 @@ def simplify_expansion(
             k, _, _ = summand.parent().variable_bounds
             if k in summand.coefficient.variables():
                 distributed_summands = _distribute_coefficient(
-                    summand,
-                    A,
-                    simplify_bterm_growth=simplify_bterm_growth
+                    summand, A, simplify_bterm_growth=simplify_bterm_growth
                 )
                 for part_summand in distributed_summands:
                     new_expr += part_summand
             else:
                 new_expr += A(summand)
-    
+
     for summand in expr.summands:
         if summand.is_exact():
             k, _, _ = summand.parent().variable_bounds
@@ -176,9 +179,8 @@ def simplify_expansion(
 
 
 def round_bterm_coefficients(
-        expansion: AsymptoticExpansion,
-        floating_point_digits: int = 0
-    ):
+    expansion: AsymptoticExpansion, floating_point_digits: int = 0
+):
     """Rounds the coefficients of all BTerms in the given expansion to the
     next integer (or rational with respect to the provided precision).
 
@@ -188,7 +190,7 @@ def round_bterm_coefficients(
 
     - ``floating_point_digits`` -- the number of floating point digits
       to which the B-term coefficients should be rounded to.
-    
+
     EXAMPLES::
 
         sage: import dependent_bterms as dbt
@@ -201,28 +203,37 @@ def round_bterm_coefficients(
         sage: dbt.round_bterm_coefficients(some_expansion, floating_point_digits=3)
         n + B(587/500*n^(-2), n >= 10)
     """
+
     def bterm_map(t):
         if isinstance(t, BTerm):
-            if isinstance(t.coefficient, Expression) and hasattr(t.parent(), 'dependent_variable'):
+            if isinstance(t.coefficient, Expression) and hasattr(
+                t.parent(), "dependent_variable"
+            ):
                 k = t.parent().dependent_variable
                 with assuming(k > 0):
                     coef_expanded = t.coefficient.simplify().expand()
                     coef_bound = sum(
-                        ceil(c * 10**floating_point_digits) / 10**floating_point_digits * k**p
+                        ceil(c * 10**floating_point_digits)
+                        / 10**floating_point_digits
+                        * k**p
                         for (c, p) in coef_expanded.coefficients(k)
                     )
                 t.coefficient = coef_bound
             else:
-                t.coefficient = ceil(t.coefficient * 10**floating_point_digits) / 10**floating_point_digits
+                t.coefficient = (
+                    ceil(t.coefficient * 10**floating_point_digits)
+                    / 10**floating_point_digits
+                )
         return t
-    
+
     # note: expansion.summands.copy() returns a shallow copy, which makes
     # this somewhat cumbersome.
     import copy
+
     P = expansion.parent()
     expansion_copy = sum(
         (P(copy.deepcopy(summand), convert=False) for summand in expansion.summands),
-        P.zero()
+        P.zero(),
     )
     expansion_copy.summands.map(bterm_map)
     return expansion_copy
@@ -283,21 +294,21 @@ def set_bterm_valid_from(asy: AsymptoticExpansion, valid_from: dict[str, int] | 
 
 
 def expansion_upper_bound(
-        asy: AsymptoticExpansion,
-        numeric: bool = False,
-        valid_from: int | None = None,
-    ) -> AsymptoticExpansion:
+    asy: AsymptoticExpansion,
+    numeric: bool = False,
+    valid_from: int | None = None,
+) -> AsymptoticExpansion:
     r"""Returns an upper bound for the given asymptotic expansion
     by turning all :class:`.BTerm` instances into exact terms.
 
     Raises an error if no such bound can be constructed.
-    
+
     INPUTS:
 
     - ``numeric`` -- If false (the default), the constructed bound is
       returned as an exact asymptotic expansion containing variables. Otherwise,
       a positive number is returned which results from substituting the variables
-      in the "symbolic" bound with the smallest integers such that all involved 
+      in the "symbolic" bound with the smallest integers such that all involved
       B-terms are valid.
 
     - ``valid_from`` --  A new ``valid_from`` value to be used for all B-Terms.
@@ -329,7 +340,7 @@ def expansion_upper_bound(
         k*n^(-1)
         sage: expansion_upper_bound(-k/n, numeric=True, valid_from=10)
         1/10*sqrt(10)
-        
+
         sage: expansion_upper_bound(A.B(k/n, valid_from=10), numeric=True)
         1/10*sqrt(10)
 
@@ -339,13 +350,14 @@ def expansion_upper_bound(
     """
     A = asy.parent()
     bound = A.zero()
-    valid_from = {v: valid_from or A.coefficient_ring.one() for v in asy.variable_names()}
+    valid_from = {
+        v: valid_from or A.coefficient_ring.one() for v in asy.variable_names()
+    }
     for summand in asy.summands:
         if isinstance(summand, TermWithCoefficient):
             coef = summand.coefficient
-            if (
-                isinstance(coef, Expression)
-                and hasattr(summand.parent(), 'dependent_variable')
+            if isinstance(coef, Expression) and hasattr(
+                summand.parent(), "dependent_variable"
             ):
                 k = summand.parent().dependent_variable
                 with assuming(k > 0):
@@ -354,7 +366,7 @@ def expansion_upper_bound(
             else:
                 coef = abs(coef)
             bound += A.create_summand(
-                'exact',
+                "exact",
                 coefficient=coef,
                 data=summand.growth,
             )
@@ -363,34 +375,35 @@ def expansion_upper_bound(
                     valid_from[v] = max(valid_from[v], bd)
         else:
             raise ValueError(f"No same-order bound can be constructed for {summand}")
-    
+
     if numeric:
         # check that expansion is bounded, in O(1)
-        OT_one = A.term_monoid('O')(A.growth_group.one())
+        OT_one = A.term_monoid("O")(A.growth_group.one())
         if not all(OT_one.can_absorb(summand) for summand in bound.summands):
             raise ValueError(
                 "Cannot determine numeric bound, the expansion "
                 f"{bound} does not seem to be bounded."
             )
-        
+
         if isinstance(A, dbt.structures.AsymptoticRingWithCustomPosetKey):
-            ETM = A.term_monoid('exact')
+            ETM = A.term_monoid("exact")
             dependent_variable, _, upper = ETM.variable_bounds
-            bound = bound.map_coefficients(lambda t: t.subs({
-                dependent_variable: upper.subs(valid_from)
-            }))
+            bound = bound.map_coefficients(
+                lambda t: t.subs({dependent_variable: upper.subs(valid_from)})
+            )
 
         return bound.subs(valid_from)
-    
+
     return bound
 
+
 def taylor_with_explicit_error(
-        f,
-        term: AsymptoticExpansion,
-        order=None,
-        valid_from=None,
-        round_constant=True,
-    ):
+    f,
+    term: AsymptoticExpansion,
+    order=None,
+    valid_from=None,
+    round_constant=True,
+):
     r"""Determines the Taylor series expansion with explicit error bounds
     of a given function `f` at a specified asymptotic term.
 
@@ -405,7 +418,7 @@ def taylor_with_explicit_error(
 
     - ``order`` -- the order of the expansion. If ``None`` (the default),
       the default precision of the underlying asymptotic ring is used.
-    
+
     - ``valid_from`` -- the point from which the error term is valid.
 
     - ``round_constant`` -- if ``True`` (the default), the bound for the
@@ -462,14 +475,16 @@ def taylor_with_explicit_error(
     for j in srange(order):
         taylor_expansion += evaluate(f_sym, z=zero) * term_power
 
-        f_sym = f_sym.diff(sym, 1) / (j+1)
+        f_sym = f_sym.diff(sym, 1) / (j + 1)
         term_power *= term
 
     term_bound = expansion_upper_bound(term, valid_from=valid_from, numeric=True)
     bound_const = abs(evaluate(f_sym, z=RIF([0, term_bound]))).upper()
 
     if not bound_const < oo:
-        raise ValueError(f"Could not find a finite bound for the derivative {f_sym} on the interval [0, {term_bound}].")
+        raise ValueError(
+            f"Could not find a finite bound for the derivative {f_sym} on the interval [0, {term_bound}]."
+        )
 
     if round_constant:
         bound_const = ceil(bound_const)
