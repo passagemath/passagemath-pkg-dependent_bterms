@@ -12,6 +12,16 @@ packages = [{include = "dependent_bterms"}]
 [tool.poetry.dependencies]
 python = "^3.9"
 
+passagemath-graphs = { version = "^10.4", optional = true }
+passagemath-repl = { version = "^10.4", optional = true }
+passagemath-symbolics = { version = "^10.4", optional = true }
+
+[tool.poetry.extras]
+passagemath = [
+    "passagemath-graphs",
+    "passagemath-repl",
+    "passagemath-symbolics",
+]
 
 [build-system]
 requires = ["poetry-core"]
