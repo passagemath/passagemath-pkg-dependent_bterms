@@ -1,28 +1,28 @@
-[tool.poetry]
+[project]
 name = "dependent-bterms"
 version = "1.0.0"
 description = "An extension to SageMath's module for computations with asymptotic expansions. Provides a special AsymptoticRing that allows to specify a secondary, dependent (monomially bounded) variable."
-authors = ["Benjamin Hackl <devel@benjamin-hackl.at>"]
+authors = [{ name = "Benjamin Hackl", email = "devel@benjamin-hackl.at" }]
+requires-python = "~=3.9"
 readme = "README.md"
 license = "GPL-3.0-or-later"
-license-file = "COPYING.txt"
-repository = "https://github.com/behackl/dependent_bterms"
-packages = [{include = "dependent_bterms"}]
 
-[tool.poetry.dependencies]
-python = "^3.9"
-
-passagemath-graphs = { version = "^10.4", optional = true }
-passagemath-repl = { version = "^10.4", optional = true }
-passagemath-symbolics = { version = "^10.4", optional = true }
-
-[tool.poetry.extras]
+[project.optional-dependencies]
 passagemath = [
-    "passagemath-graphs",
-    "passagemath-repl",
-    "passagemath-symbolics",
+    "passagemath-graphs~=10.4",
+    "passagemath-repl~=10.4",
+    "passagemath-symbolics~=10.4",
 ]
 
+[project.urls]
+Repository = "https://github.com/behackl/dependent_bterms"
+
+[tool.hatch.build.targets.sdist]
+include = ["dependent_bterms"]
+
+[tool.hatch.build.targets.wheel]
+include = ["dependent_bterms"]
+
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
