@@ -16,6 +16,8 @@ TESTS::
 
 """
 
+from __future__ import annotations
+
 from sage.symbolic.ring import SR
 
 from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing, AsymptoticExpansion

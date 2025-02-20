@@ -16,6 +16,9 @@ TESTS::
 
 """
 
+from __future__ import annotations
+
+
 from sage.functions.other import ceil
 from sage.rings.asymptotic.asymptotic_ring import AsymptoticRing
 from sage.rings.asymptotic.term_monoid import (
