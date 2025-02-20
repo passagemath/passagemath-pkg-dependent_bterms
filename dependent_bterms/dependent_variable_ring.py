@@ -81,6 +81,8 @@ def AsymptoticRingWithDependentVariable(
     dependent_variable,
     lower_bound_power,
     upper_bound_power,
+    lower_bound_factor=1,
+    upper_bound_factor=1,
     bterm_round_to=None,
     **ring_kwargs,
 ):
@@ -103,6 +105,12 @@ def AsymptoticRingWithDependentVariable(
     - ``upper_bound_power`` -- analogous to ``lower_bound_power``, just
       for the upper bound.
 
+    - ``lower_bound_factor`` -- a nonnegative real number, the constant
+      with which the monomial power is multiplied to form the lower bound.
+
+    - ``upper_bound_factor`` -- a nonnegative real number, the constant
+      with which the monomial power is multiplied to form the upper bound.
+
     - ``bterm_round_to`` -- a positive integer or ``None`` (the default):
       the number of floating point digits to which the coefficients
       of B-terms are rounded.
@@ -124,6 +132,14 @@ def AsymptoticRingWithDependentVariable(
         <class 'dependent_bterms.structures.MonBoundBTermMonoidFactory.<locals>.MonBoundBTermMonoid'>
         sage: O(k*n)
         O(n^(3/2))
+
+    Make sure that scaled monomial bounds also work as intended::
+
+        sage: A, n, k = dbt.AsymptoticRingWithDependentVariable('n^QQ', 'k', 0, 1/2,
+        ....:     upper_bound_factor=2, default_prec=5)
+        sage: dbt.simplify_expansion((n*k).B(valid_from=10), simplify_bterm_growth=True)
+        B(2*n^(3/2), n >= 10)
+
     """
     AR = AsymptoticRingWithCustomPosetKey(
         growth_group=growth_group,
@@ -135,8 +151,8 @@ def AsymptoticRingWithDependentVariable(
     AR_with_bound = _add_monomial_growth_restriction_to_ring(
         AR,
         k,
-        lower_bound=n**lower_bound_power,
-        upper_bound=n**upper_bound_power,
+        lower_bound=AR(lower_bound_factor) * n**lower_bound_power,
+        upper_bound=AR(upper_bound_factor) * n**upper_bound_power,
         bterm_round_to=bterm_round_to,
     )
     n = AR_with_bound.gen()
