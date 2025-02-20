@@ -1,6 +1,6 @@
 [project]
 name = "dependent-bterms"
-version = "1.0.0"
+version = "1.0.1"
 description = "An extension to SageMath's module for computations with asymptotic expansions. Provides a special AsymptoticRing that allows to specify a secondary, dependent (monomially bounded) variable."
 authors = [{ name = "Benjamin Hackl", email = "devel@benjamin-hackl.at" }]
 requires-python = "~=3.9"
