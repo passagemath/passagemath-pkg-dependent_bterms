@@ -454,6 +454,14 @@ def taylor_with_explicit_error(
         sage: dbt.taylor_with_explicit_error(exp, k/(10*n), order=3, valid_from=1000)
         1 + 1/10*k*n^(-1) + 1/200*k^2*n^(-2) + B(1/10*abs(k^3)*n^(-3), n >= 1000)
 
+    TESTS:
+
+    Make sure that functions for which the evaluation at an
+    asymptotic expansion is not defined can still be used::
+
+        sage: dbt.taylor_with_explicit_error(lambda t: sin(t)*cos(t), k/n, order=4, valid_from=10)
+        k*n^(-1) - 2/3*k^3*n^(-3) + B(abs(k)^4*n^(-4), n >= 10)
+
     """
     if not term.is_little_o_of_one():
         raise ValueError("The asymptotic term needs to tend to 0.")
