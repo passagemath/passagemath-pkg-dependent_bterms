@@ -466,8 +466,8 @@ def taylor_with_explicit_error(
     if order is None:
         order = AR.default_prec
 
-    zero = AR.zero()
-    taylor_expansion = zero
+    zero = AR.coefficient_ring.zero()
+    taylor_expansion = AR.zero()
     term_power = AR.one()
     sym = SR.var("z")
     f_sym = f(sym)
