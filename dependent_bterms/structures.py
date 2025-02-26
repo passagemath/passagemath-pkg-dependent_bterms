@@ -285,6 +285,9 @@ class MonBoundBTerm(BTerm):
         super().__init__(parent, growth, valid_from, **kwds)
 
     def dependent_growth_range(self):
+        if hasattr(self, "_cached_growth_range"):
+            return self._cached_growth_range
+
         dependent_variable, lower, upper = self.parent().variable_bounds
         if not (
             isinstance(self.coefficient, Expression)
@@ -304,7 +307,8 @@ class MonBoundBTerm(BTerm):
             [term] = list(term.summands)
             boundary_growths.append(term.growth * self.growth)
 
-        return (min(boundary_growths), max(boundary_growths))
+        self._cached_growth_range = (min(boundary_growths), max(boundary_growths))
+        return self._cached_growth_range
 
     def can_absorb(self, other):
         self_growth_lower, self_growth_upper = self.dependent_growth_range()
@@ -389,6 +393,9 @@ def MonBoundBTermMonoidFactory(
 
 class MonBoundExactTerm(ExactTerm):
     def dependent_growth_range(self):
+        if hasattr(self, "_cached_growth_range"):
+            return self._cached_growth_range
+
         dependent_variable, lower, upper = self.parent().variable_bounds
         if dependent_variable not in self.coefficient.variables():
             return (self.growth, self.growth)
@@ -405,7 +412,8 @@ class MonBoundExactTerm(ExactTerm):
             [term] = list(term.summands)
             boundary_growths.append(term.growth * self.growth)
 
-        return (min(boundary_growths), max(boundary_growths))
+        self._cached_growth_range = (min(boundary_growths), max(boundary_growths))
+        return self._cached_growth_range
 
 
 def MonBoundExactTermMonoidFactory(dependent_variable, lower_bound, upper_bound):
