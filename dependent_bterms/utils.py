@@ -77,6 +77,7 @@ def evaluate(expression: Expression, **eval_args):
         pi + pi*n^(-1) + pi*n^(-2) + O(n^(-3))
 
     """
+    expression = expression.expand()
     expression_vars = expression.variables()
     function_args = [eval_args.get(str(var), var) for var in expression_vars]
 
