@@ -48,13 +48,17 @@ __all__ = [
 ]
 
 
-def evaluate(expression: Expression, **eval_args):
+def evaluate(expression: Expression, expand=True, **eval_args):
     """Evaluate a symbolic expression without necessarily
     returning a result in the symbolic ring.
 
     INPUT:
 
     - ``expression`` -- a symbolic expression.
+
+    - ``expand`` -- if ``True`` (the default), the expression is
+      expanded before evaluation. Useful to improve performance
+      when the expression is a sum of terms.
 
     - ``eval_args`` -- the values to be input for the variables
       in keyword argument form.
@@ -77,6 +81,8 @@ def evaluate(expression: Expression, **eval_args):
         pi + pi*n^(-1) + pi*n^(-2) + O(n^(-3))
 
     """
+    if expand:
+        expression = expression.expand()
     expression_vars = expression.variables()
     function_args = [eval_args.get(str(var), var) for var in expression_vars]
 
@@ -481,13 +487,13 @@ def taylor_with_explicit_error(
     f_sym = f(sym)
 
     for j in srange(order):
-        taylor_expansion += evaluate(f_sym, z=zero) * term_power
+        taylor_expansion += f_sym(z=zero) * term_power
 
         f_sym = f_sym.diff(sym, 1) / (j + 1)
         term_power *= term
 
     term_bound = expansion_upper_bound(term, valid_from=valid_from, numeric=True)
-    bound_const = abs(evaluate(f_sym, z=RIF([0, term_bound]))).upper()
+    bound_const = abs(evaluate(f_sym, expand=False, z=RIF([0, term_bound]))).upper()
 
     if not bound_const < oo:
         raise ValueError(
