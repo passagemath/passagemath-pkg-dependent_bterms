@@ -36,3 +36,6 @@ dev = [
 "_doctest_environment.py" = ["F403"]
 "__init__.py" = ["F401", "F403"]
 "*.ipynb" = ["F821"]
+
+[tool.ruff.format]
+exclude = ["*.ipynb"]
