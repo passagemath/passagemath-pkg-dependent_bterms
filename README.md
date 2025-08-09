@@ -64,3 +64,13 @@ several examples are provided in the respective docstrings.
 
 A worksheet containing a comprehensive introduction to the capabilities of
 this package can be found here: [`toolbox_demo.ipynb`](toolbox_demo.ipynb).
+
+
+## Standalone installation in Python (no prior SageMath installation needed)
+
+This package can be installed in Python, using the modularized distributions
+of the Sage library from the passagemath project.
+
+```sh
+$ pip install "git+https://github.com/passagemath/passagemath-pkg-dependent_bterms.git[passagemath]"
+```
