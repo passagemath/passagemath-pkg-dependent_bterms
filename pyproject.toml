@@ -9,9 +9,9 @@ license = "GPL-3.0-or-later"
 
 [project.optional-dependencies]
 passagemath = [
-    "passagemath-graphs~=10.4",
-    "passagemath-repl~=10.4",
-    "passagemath-symbolics~=10.4",
+    "passagemath-graphs",
+    "passagemath-repl",
+    "passagemath-symbolics",
 ]
 
 [project.urls]
